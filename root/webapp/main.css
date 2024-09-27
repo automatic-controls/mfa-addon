@@ -1,0 +1,112 @@
+body, input, textarea, select {
+  background-color:black;
+  color:white;
+}
+.e {
+  margin-left:0.5em;
+  margin-right:0.5em;
+  margin-top:0.25em;
+  margin-bottom:0.25em;
+}
+.c {
+  text-align:center;
+}
+.checker {
+  margin-right:0.5em;
+}
+.column {
+  float:left;
+  width:50%;
+}
+.row {
+  content: "";
+  display:table;
+  clear:both;
+  width:100%;
+}
+button {
+  border:1px solid white;
+  border-radius: 8px;
+  padding-left:7px;
+  padding-right:7px;
+  padding-top:2px;
+  padding-bottom:2px;
+  text-decoration: none;
+  color:lightgreen;
+  background-color: transparent;
+  cursor:pointer;
+  user-select: none;
+}
+button:hover {
+  color:darkgoldenrod;
+}
+button:active {
+  color:teal;
+}
+button:disabled {
+  background-color:darkslategray;
+  color:forestgreen;
+  cursor:default;
+}
+.buttonCopy {
+  border:1px solid white;
+  border-radius: 8px;
+  padding-left:6px;
+  padding-right:6px;
+  padding-top:1px;
+  padding-bottom:1px;
+  color:lightgreen;
+  cursor:pointer;
+  user-select: none;
+}
+.buttonCopy:hover {
+  color:darkgoldenrod;
+}
+a {
+  border:1px solid white;
+  border-radius: 8px;
+  padding-left:6px;
+  padding-right:6px;
+  padding-top:1px;
+  padding-bottom:1px;
+  text-decoration: none;
+  background-color: transparent;
+  user-select: none;
+}
+a:link,a:visited {
+  color: lightgreen;
+}
+a:hover {
+  color:darkgoldenrod;
+}
+a:active {
+  color:teal;
+}
+td, th {
+  padding:0.5em;
+  border:solid 1px gray;
+}
+th {
+  background-color:darkslategray;
+}
+table {
+  border-collapse:collapse;
+  margin:0 auto;
+}
+tfoot {
+  border:solid 3px darkmagenta;
+}
+.divGrouping {
+  display:inline-block;
+  margin-left:1vw;
+  margin-right:1vw;
+  margin-top:5px;
+  margin-bottom:5px;
+}
+.divGrouping2 {
+  display:block;
+  margin-left:1vw;
+  margin-right:1vw;
+  margin-top:3px;
+  margin-bottom:3px;
+}

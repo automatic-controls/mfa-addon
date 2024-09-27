@@ -1,0 +1,173 @@
+<!--
+  BSD 3-Clause License
+  Copyright (c) 2024, Automatic Controls Equipment Systems, Inc.
+  Contributors: Cameron Vogt (@cvogt729)
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>
+      MFA Security Code
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../../../../root/webapp/main.css"/>
+    <script>
+      function resize(input){
+        const styles = window.getComputedStyle(input);
+        hiddenSpan.style.fontFamily = styles.fontFamily;
+        hiddenSpan.style.fontSize = styles.fontSize;
+        hiddenSpan.style.fontStyle = styles.fontStyle;
+        hiddenSpan.style.fontWeight = styles.fontWeight;
+        hiddenSpan.style.letterSpacing = styles.letterSpacing;
+        hiddenSpan.style.textTransform = styles.textTransform;
+        hiddenSpan.style.borderLeftWidth = styles.borderLeftWidth;
+        hiddenSpan.style.borderRightWidth = styles.borderRightWidth;
+        hiddenSpan.style.paddingLeft = styles.paddingLeft;
+        hiddenSpan.style.paddingRight = styles.paddingRight;
+        hiddenSpan.innerText = input.value;
+        input.style.width = hiddenSpan.offsetWidth+"px";
+      }
+      function validateInt(field,max){
+        var s = field.value;
+        if (s.length>0){
+          s = s.replaceAll(/\D/g,"");
+          if (s.length>0){
+            if (s.length>15){
+              s = s.substring(0,15);
+            }
+            s = parseInt(s);
+            s = Math.min(s,max);
+            field.value = s.toString();
+          }else{
+            field.value = "";
+          }
+        }
+      }
+      function setStatus(color,text){
+        statusBox.innerText = text;
+        statusBox.style.color = color;
+      }
+      function submitCode(){
+        const submitButton = document.getElementById("submitButton");
+        if (!submitButton.disabled){
+          const mfa_code = codeField.value;
+          if (!mfa_code){
+            setStatus("red","Please enter your security code.");
+            return;
+          }else if (mfa_code.length!==6){
+            setStatus("red","The security code is a 6-digit number.");
+            return;
+          }
+          submitButton.disabled = true;
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/QueryMFA?action=checkCode");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                if (this.responseText==="1"){
+                  window.location.href = window.location.origin+
+                    "?name="+encodeURIComponent(mfa_user)+
+                    "&mfa_token="+encodeURIComponent(mfa_token)+
+                    "&mfa_code="+encodeURIComponent(mfa_code)
+                }else{
+                  setStatus("red","Incorrect or expired code, or maximum attempts (3) exceeded.");
+                  codeField.value = "";
+                  resize(codeField);
+                }
+              }else if (this.status==302 || this.status==403){
+                window.location.href = window.location.origin;
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              submitButton.disabled = false;
+            }
+          };
+          setStatus("white","Submitting...");
+          req.send(
+            "mfa_user="+encodeURIComponent(mfa_user)+
+            "&mfa_token="+encodeURIComponent(mfa_token)+
+            "&mfa_code="+encodeURIComponent(mfa_code)
+          );
+        }
+      }
+      function resendCode(){
+        const resendButton = document.getElementById("resendButton");
+        if (!resendButton.disabled){
+          resendButton.disabled = true;
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/QueryMFA?action=resendCode");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                mfa_token = this.responseText;
+                codeField.value = "";
+                resize(codeField);
+                setStatus("lightgreen", "Please enter the security code sent to "+email);
+              }else if (this.status==302 || this.status==403){
+                window.location.href = window.location.origin;
+              }else if (this.status==500){
+                setStatus("red","The server encountered an error. Please try again in a few moments.");
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              resendButton.disabled = false;
+            }
+          };
+          setStatus("white","Submitting...");
+          req.send(
+            "mfa_user="+encodeURIComponent(mfa_user)+
+            "&mfa_token="+encodeURIComponent(mfa_token)
+          );
+        }
+      }
+      function toDate(milli){
+        const d = new Date(milli);
+        return pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());
+        //d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())
+      }
+      function pad(x){
+        if (x>9){
+          return String(x);
+        }else{
+          return "0"+String(x);
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div style="text-align:center">
+      <h1 id="mainTitle">MFA Security Code</h1>
+      <span id="statusBox"></span>
+      <br><br>
+      <div class="divGrouping">
+        <label for="codeField">Security Code:</label>
+        <input class="c" type="text" id="codeField" spellcheck="false" oninput="validateInt(this,999999999);resize(this)">
+      </div>
+      <br><br>
+      <button class="e" id="resendButton" onclick="resendCode()">Resend Code</button>
+      <button class="e" id="submitButton" onclick="submitCode()">Submit</button>
+      <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
+    </div>
+    <script>
+      var mfa_user = "__USER__";
+      var mfa_token = "__TOKEN__";
+      var email = "__EMAIL__";
+      resize(codeField);
+      codeField.addEventListener("keypress", function (e){
+        if (e.key==="Enter"){
+          e.preventDefault();
+          submitCode();
+        }
+      });
+      setStatus("white", "The security code sent to "+email+" expires at "+toDate(__EXPIRY__)+".");
+      codeField.focus();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+file:core:modules\core
+file:core-api:modules\core
+file:common:modules\common
+file:commonexceptions:modules\commonexceptions
+file:commonbaseutils:bin\lib
+file:webaccess-api:modules\webaccess
+file:extensionsupport-api:modules\extensionsupport
+file:javax.mail:bin\lib

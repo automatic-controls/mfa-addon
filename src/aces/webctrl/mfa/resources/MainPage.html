@@ -1,0 +1,390 @@
+<!--
+  BSD 3-Clause License
+  Copyright (c) 2024, Automatic Controls Equipment Systems, Inc.
+  Contributors: Cameron Vogt (@cvogt729)
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>
+      Configure MFA
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../../../../root/webapp/main.css"/>
+    <script>
+      function enc(s){
+        return String(s).replace(/\\/g,"\\\\").replace(/;/g,"\\;")+';';
+      }
+      function registerChange(){
+        if (!changes){
+          changes = true;
+          mainTitle.innerText = "* Configure MFA *";
+          document.title = mainTitle.innerText;
+        }
+      }
+      function unregisterChange(){
+        if (changes){
+          changes = false;
+          mainTitle.innerText = "Configure MFA";
+          document.title = mainTitle.innerText;
+        }
+      }
+      function checkSave(){
+        if (changes){
+          alert("Please save changes before continuing.");
+          return false;
+        }else{
+          return true;
+        }
+      }
+      function resize(input){
+        const styles = window.getComputedStyle(input);
+        hiddenSpan.style.fontFamily = styles.fontFamily;
+        hiddenSpan.style.fontSize = styles.fontSize;
+        hiddenSpan.style.fontStyle = styles.fontStyle;
+        hiddenSpan.style.fontWeight = styles.fontWeight;
+        hiddenSpan.style.letterSpacing = styles.letterSpacing;
+        hiddenSpan.style.textTransform = styles.textTransform;
+        hiddenSpan.style.borderLeftWidth = styles.borderLeftWidth;
+        hiddenSpan.style.borderRightWidth = styles.borderRightWidth;
+        hiddenSpan.style.paddingLeft = styles.paddingLeft;
+        hiddenSpan.style.paddingRight = styles.paddingRight;
+        hiddenSpan.innerText = input.value;
+        input.style.width = hiddenSpan.offsetWidth+"px";
+      }
+      function setStatus(color,text){
+        statusBox.innerText = text;
+        statusBox.style.color = color;
+      }
+      function save(){
+        if (!changeAllowed){
+          return;
+        }
+        const saveButton = document.getElementById("saveButton");
+        if (!saveButton.disabled){
+          if (!changes){
+            setStatus("white","No updates were made.");
+            return;
+          }
+          saveButton.disabled = true;
+          disableChanges();
+          const enforceMFA = enforceMFACheckbox.checked;
+          const allowServiceLogins = allowServiceLoginsCheckbox.checked;
+          const bypassOnEmailFailure = bypassOnEmailFailureCheckbox.checked;
+          const _mappings = [];
+          for (const e of document.getElementById("mappingBody").getElementsByTagName("TR")){
+            if (e.mfa_operator && e.mfa_email){
+              _mappings.push(enc(e.mfa_operator.toLowerCase()));
+              _mappings.push(enc(e.mfa_email));
+            }
+          }
+          const mappings = _mappings.join("");
+          const _whitelist = [];
+          for (const e of document.getElementById("whitelistBody").getElementsByTagName("TR")){
+            if (e.mfa_operator){
+              _whitelist.push(enc(e.mfa_operator.toLowerCase()));
+            }
+          }
+          const whitelist = _whitelist.join("");
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/index?action=save");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                unregisterChange();
+                setStatus("lightgreen","Successful.");
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              saveButton.disabled = false;
+              enableChanges();
+            }
+          };
+          setStatus("white","Saving data...");
+          req.send(
+            "enforceMFA="+encodeURIComponent(enforceMFA)+
+            "&allowServiceLogins="+encodeURIComponent(allowServiceLogins)+
+            "&bypassOnEmailFailure="+encodeURIComponent(bypassOnEmailFailure)+
+            "&mappings="+encodeURIComponent(mappings)+
+            "&whitelist="+encodeURIComponent(whitelist)
+          );
+        }
+      }
+      function load(){
+        if (!changeAllowed){
+          return;
+        }
+        const loadButton = document.getElementById("loadButton");
+        if (!loadButton.disabled){
+          loadButton.disabled = true;
+          disableChanges();
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/index?action=load");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                try{
+                  render(JSON.parse(this.responseText));
+                  unregisterChange();
+                  setStatus("lightgreen","Successful.");
+                }catch(e){
+                  console.log(e);
+                  setStatus("red","Failed to parse response.");
+                }
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              loadButton.disabled = false;
+              enableChanges();
+            }
+          };
+          setStatus("white","Loading data...");
+          req.send();
+        }
+      }
+      function render(data){
+        enforceMFACheckbox.checked = data["enforceMFA"];
+        allowServiceLoginsCheckbox.checked = data["allowServiceLogins"];
+        bypassOnEmailFailureCheckbox.checked = data["bypassOnEmailFailure"];
+        const mappingBody = document.getElementById("mappingBody");
+        while (mappingBody.children.length>1){
+          mappingBody.removeChild(mappingBody.firstElementChild);
+        }
+        const whitelistBody = document.getElementById("whitelistBody");
+        while (whitelistBody.children.length>1){
+          whitelistBody.removeChild(whitelistBody.firstElementChild);
+        }
+        for (const x of data["mappings"]){
+          addMapping(x["user"], x["email"]);
+        }
+        for (const x of data["whitelist"]){
+          addWhitelist(x);
+        }
+      }
+      function disableChanges(){
+        changeAllowed = false;
+        enforceMFACheckbox.disabled = true;
+        allowServiceLoginsCheckbox.disabled = true;
+        bypassOnEmailFailureCheckbox.disabled = true;
+      }
+      function enableChanges(){
+        changeAllowed = true;
+        enforceMFACheckbox.disabled = false;
+        allowServiceLoginsCheckbox.disabled = false;
+        bypassOnEmailFailureCheckbox.disabled = false;
+      }
+      function createMapping(){
+        if (!changeAllowed){
+          return;
+        }
+        const user = usernameField.value?.trim()?.toLowerCase();
+        const email = emailField.value?.trim();
+        if (!user || !email){
+          usernameField.value = "";
+          emailField.value = "";
+          return;
+        }
+        const mappingBody = document.getElementById("mappingBody");
+        for (const e of mappingBody.getElementsByTagName("TR")){
+          if (user===e.mfa_operator?.toLowerCase()){
+            return;
+          }
+        }
+        usernameField.value = "";
+        emailField.value = "";
+        addMapping(user,email);
+        registerChange();
+      }
+      function addMapping(user, email){
+        const tr = document.createElement("TR");
+        const tdOperator = document.createElement("TD");
+        const tdEmail = document.createElement("TD");
+        const tdActions = document.createElement("TD");
+        const deleteButton = document.createElement("BUTTON");
+        const emailInput = document.createElement("INPUT");
+        deleteButton.innerText = "Delete";
+        tr.mfa_operator = user;
+        tr.mfa_email = email;
+        deleteButton.className = "e";
+        deleteButton.onclick = ()=>{
+          if (!changeAllowed){
+            return;
+          }
+          mappingBody.removeChild(tr);
+          registerChange();
+        };
+        tdOperator.innerText = user;
+        emailInput.className = "c";
+        emailInput.value = email;
+        emailInput.setAttribute("type", "text");
+        emailInput.setAttribute("spellcheck", "false");
+        emailInput.oninput = ()=>{
+          if (!changeAllowed){
+            emailInput.value = tr.mfa_email;
+            return;
+          }
+          resize(emailInput);
+          registerChange();
+          tr.mfa_email = emailInput.value;
+        };
+        tdActions.appendChild(deleteButton);
+        tdEmail.appendChild(emailInput);
+        tr.appendChild(tdOperator);
+        tr.appendChild(tdEmail);
+        tr.appendChild(tdActions);
+        resize(emailInput);
+        mappingBody.insertBefore(tr, document.getElementById("mappingCreator"));
+      }
+      function createWhitelist(){
+        if (!changeAllowed){
+          return;
+        }
+        const user = usernameField2.value?.trim()?.toLowerCase();
+        if (!user){
+          usernameField2.value = "";
+          return;
+        }
+        const whitelistBody = document.getElementById("whitelistBody");
+        for (const e of whitelistBody.getElementsByTagName("TR")){
+          if (user===e.mfa_operator?.toLowerCase()){
+            return;
+          }
+        }
+        usernameField2.value = "";
+        addWhitelist(user);
+        registerChange();
+      }
+      function addWhitelist(user){
+        const tr = document.createElement("TR");
+        const tdOperator = document.createElement("TD");
+        const tdActions = document.createElement("TD");
+        const deleteButton = document.createElement("BUTTON");
+        deleteButton.innerText = "Delete";
+        tr.mfa_operator = user;
+        deleteButton.className = "e";
+        deleteButton.onclick = ()=>{
+          if (!changeAllowed){
+            return;
+          }
+          whitelistBody.removeChild(tr);
+          registerChange();
+        };
+        tdOperator.innerText = user;
+        tdActions.appendChild(deleteButton);
+        tr.appendChild(tdOperator);
+        tr.appendChild(tdActions);
+        whitelistBody.insertBefore(tr, document.getElementById("whitelistCreator"));
+      }
+    </script>
+  </head>
+  <body>
+    <div style="text-align:center">
+      <h1 id="mainTitle">Configure MFA</h1>
+      <span id="statusBox">Loading...</span>
+      <br><br>
+      <div class="row">
+        <div class="column">
+          <table style="float:right;margin-right:0.5em" title="Operators in this list have MFA configured to the specified email address.">
+            <thead>
+              <tr>
+                <th colspan="3">MFA Email Mappings</th>
+              </tr>
+              <tr>
+                <th>Operator</th>
+                <th>Email</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="mappingBody">
+              <tr id="mappingCreator">
+                <td><input class="c" type="text" id="usernameField" spellcheck="false" oninput="resize(this)"></td>
+                <td><input class="c" type="text" id="emailField" spellcheck="false" oninput="resize(this)"></td>
+                <td><button class="c" onclick="createMapping()">Create</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="column">
+          <div style="text-align:left">
+            <div class="divGrouping2" title="Specifies whether to force all users to use MFA.">
+              <input type="checkbox" id="enforceMFACheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle">
+              <label for="enforceMFACheckbox" style="vertical-align:middle">Enforce MFA</label>
+            </div>
+            <div class="divGrouping2" title="Specifies whether to allow MFA-enabled users to login through service endpoints such as SOAP and Telnet, which do not support MFA.">
+              <input type="checkbox" id="allowServiceLoginsCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
+              <label for="allowServiceLoginsCheckbox" style="vertical-align:middle">Allow Service Logins</label>
+            </div>
+            <div class="divGrouping2" title="Specifies whether to bypass MFA when WebCTRL's email server is misconfigured.">
+              <input type="checkbox" id="bypassOnEmailFailureCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
+              <label for="bypassOnEmailFailureCheckbox" style="vertical-align:middle">Bypass MFA on Email Server Failure</label>
+            </div>
+          </div>
+          <table style="float:left;margin-left:2.5em;margin-top:1em" title="Operators in this list behave as if MFA is not enforced, service logins are allowed, and MFA bypass on email server failure is enabled.">
+            <thead>
+              <tr>
+                <th colspan="2">Restriction Bypass Whitelist</th>
+              </tr>
+              <tr>
+                <th>Operator</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="whitelistBody">
+              <tr id="whitelistCreator">
+                <td><input class="c" type="text" id="usernameField2" spellcheck="false" oninput="resize(this)"></td>
+                <td><button class="c" onclick="createWhitelist()">Create</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <br>
+      <button class="e" id="saveButton" onclick="save()">Save Changes</button>
+      <button class="e" id="loadButton" onclick="load()">Discard Changes</button>
+      <br>
+      <a class="e" href="__DOCUMENTATION__" target="_blank" style="display:inline-block;margin-top:0.4em">Documentation</a>
+      <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
+    </div>
+    <script>
+      var changes;
+      var changeAllowed = true;
+      var prompt = true;
+      resize(usernameField);
+      resize(usernameField2);
+      resize(emailField);
+      usernameField.addEventListener("keypress", function (e){
+        if (e.key==="Enter"){
+          e.preventDefault();
+          emailField.focus();
+        }
+      });
+      emailField.addEventListener("keypress", function (e){
+        if (e.key==="Enter"){
+          e.preventDefault();
+          createMapping();
+          usernameField.focus();
+        }
+      });
+      usernameField2.addEventListener("keypress", function (e){
+        if (e.key==="Enter"){
+          e.preventDefault();
+          createWhitelist();
+        }
+      });
+      unregisterChange();
+      window.onbeforeunload = ()=>{
+        if (prompt && changes){
+          return "Changes remain unsaved. Are you sure you want to leave?";
+        }
+      };
+      load();
+    </script>
+  </body>
+</html>
