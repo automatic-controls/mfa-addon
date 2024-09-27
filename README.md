@@ -11,11 +11,13 @@ WebCTRL is a trademark of Automated Logic Corporation. Any other trademarks ment
 
 ## General Information
 
-This add-on provides the ability to use multi-factor authentication when logging into WebCTRL. This add-on has been tested on WebCTRL8.5 and WebCTRL9.0. The add-on uses WebCTRL's email server configuration to send a random 6-digit code to a user's email address upon login. Security codes expire in 5 minutes, and users get 3 attempts to enter the code correctly. After logging in, an item will show up in the system menu allowing users to configure or change the MFA email address associated to their account.
+This add-on provides the ability to use multi-factor authentication when logging into WebCTRL. The add-on uses WebCTRL's email server configuration to send a random 6-digit code to a user's email address upon login. Security codes expire in 5 minutes, and users get 3 attempts to enter the code correctly. After logging in, an item will show up in the system menu allowing users to configure or change the MFA email address associated to their account.
 
 ![](./root/webapp/images/system_menu.png)
 
 - After installing the add-on, you must logout and login for the *Configure MFA* button to show up in the system menu.
+
+This add-on has been tested on WebCTRL8.5 and WebCTRL9.0. It is not compatible with the LDAP or SSO add-ons provided by ALC (or any other add-on which modifies WebCTRL's authentication provider).
 
 System administrators can change settings in the add-on's main page. MFA emails can be viewed or changed for any user. If a user accidentically configures an incorrect email for MFA, a system administrator can navigate to this page and delete the relevant email mapping.
 
