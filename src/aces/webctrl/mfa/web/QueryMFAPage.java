@@ -14,9 +14,18 @@ public class QueryMFAPage extends ServletBase {
     final String user = req.getParameter("mfa_user");
     final String token = req.getParameter("mfa_token");
     final String action = req.getParameter("action");
-    String email;
     SecurityCode sc;
-    if (user==null || token==null || (sc=Initializer.getCode(user))==null || !sc.getToken().equals(token) || (email=Config.getEmail(user))==null){
+    if (user==null || token==null || (sc=Initializer.getCode(user))==null || !sc.getToken().equals(token)){
+      if (action==null){
+        res.sendRedirect("/");
+      }else{
+        res.setStatus(403);
+      }
+      return;
+    }
+    String email = Config.getEmail(user);
+    String otp = Config.getOTP(user);
+    if (email==null && otp==null){
       if (action==null){
         res.sendRedirect("/");
       }else{
@@ -29,13 +38,25 @@ public class QueryMFAPage extends ServletBase {
       res.getWriter().print(getHTML(req)
         .replace("__USER__", Utility.escapeJS(user))
         .replace("__TOKEN__", Utility.escapeJS(token))
-        .replace("__EMAIL__", Utility.escapeJS(email))
+        .replace("__EMAIL__", email==null?"":Utility.escapeJS(email))
         .replace("__EXPIRY__", String.valueOf(sc.expiry))
+        .replace("__OTP__", String.valueOf(otp!=null))
       );
     }else if (action.equals("checkCode")){
       final String code = req.getParameter("mfa_code");
       if (code==null){
         res.setStatus(400);
+        return;
+      }
+      if (otp!=null && Utility.checkCode(otp, code)){
+        res.setContentType("text/plain");
+        res.getWriter().print("1");
+        return;
+      }
+      if (email==null){
+        Initializer.checkCode(user, sc.code+1, token, false);
+        res.setContentType("text/plain");
+        res.getWriter().print("0");
         return;
       }
       int c;
@@ -49,7 +70,7 @@ public class QueryMFAPage extends ServletBase {
       res.getWriter().print(Initializer.checkCode(user, c, token, false)?"1":"0");
     }else if (action.equals("resendCode")){
       final SecurityCode st = Initializer.generateCode(user);
-      if (Config.sendEmail(email, st, 0)){
+      if (Config.sendEmail(email, st, 0L) || Config.sendEmail(email, st, 1500L)){
         res.setContentType("text/plain");
         res.getWriter().print(st.getToken());
       }else{

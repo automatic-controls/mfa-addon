@@ -25,8 +25,14 @@ public class ChangeEmailPage extends ServletBase {
         res.setStatus(400);
         return;
       }
-      Config.setMapping(user,email);
+      Config.setEmail(user,email);
       Config.saveData();
+    }else if (action.equals("otp")){
+      final String otp = Utility.createOTP(user);
+      Config.setOTP(user,otp);
+      Config.saveData();
+      res.setContentType("text/plain");
+      res.getWriter().print(otp);
     }else{
       res.sendError(400, "Invalid action parameter.");
     }

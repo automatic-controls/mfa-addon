@@ -1,6 +1,7 @@
 package aces.webctrl.mfa.core;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.regex.*;
 import java.time.*;
 import java.time.format.*;
+import com.bastiaanjansen.otp.*;
 /**
  * Contains various utility methods used throughout the application.
  */
@@ -18,6 +20,24 @@ public class Utility {
   private final static Pattern SUBST_FORMATTER = Pattern.compile("\\$(\\d)");
   private final static Pattern LINE_ENDING = Pattern.compile("\\r?+\\n");
   private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+  /**
+   * @return whether the given code validates against the given TOTP URI string.
+   */
+  public static boolean checkCode(String OTP, String code) throws URISyntaxException {
+    return TOTPGenerator.fromURI(new java.net.URI(OTP)).verify(code, 1);
+  }
+  /**
+   * @return a new TOTP URI string for the given user.
+   */
+  public static String createOTP(String user) throws URISyntaxException {
+    return new TOTPGenerator.Builder(SecretGenerator.generate())
+    .withHOTPGenerator(builder -> {
+      builder.withPasswordLength(6);
+      builder.withAlgorithm(HMACAlgorithm.SHA1);
+    })
+    .withPeriod(java.time.Duration.ofSeconds(30))
+    .build().getURI("WebCTRL", user).toString();
+  }
   /**
    * @return a hex string representation of the given bytes.
    */
@@ -368,5 +388,11 @@ public class Utility {
       }
     }
     return arr;
+  }
+  /**
+   * Converts a character array into a byte array.
+   */
+  public static byte[] toBytes(char[] arr){
+    return java.nio.charset.StandardCharsets.UTF_8.encode(java.nio.CharBuffer.wrap(arr)).array();
   }
 }

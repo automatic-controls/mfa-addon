@@ -10,6 +10,7 @@
       Configure MFA
     </title>
     <link rel="stylesheet" type="text/css" href="../../../../../root/webapp/main.css"/>
+    <script type="text/javascript" src="../../../../../root/webapp/qrcode.min.js"></script>
     <script>
       function resize(input){
         const styles = window.getComputedStyle(input);
@@ -52,6 +53,8 @@
               if (this.status===200){
                 emailField.value = "";
                 emailField2.value = "";
+                resize(emailField);
+                resize(emailField2);
                 setStatus("lightgreen","Success! Your new email is: "+email);
               }else if (this.status==0){
                 setStatus("red","Request timed out.");
@@ -67,6 +70,41 @@
           );
         }
       }
+      function configureOTP(){
+        const otpButton = document.getElementById("otpButton");
+        if (!otpButton.disabled){
+          otpButton.disabled = true;
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/ChangeEmail?action=otp");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                const data = this.responseText;
+                const qr = document.getElementById("qrcode");
+                qr.style.display = "block";
+                qr.replaceChildren();
+                new QRCode(qr, {
+                  text: data,
+                  width: 256,
+                  height: 256,
+                  colorDark: "#000000",
+                  colorLight: "#FFFFFF"
+                });
+                setStatus("lightgreen","Success! Please scan the QR code with your authenticator app before leaving this page.");
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              otpButton.disabled = false;
+            }
+          };
+          setStatus("white","Submitting...");
+          req.send();
+        }
+      }
     </script>
   </head>
   <body>
@@ -77,6 +115,7 @@
         You may enter phone number emails as well.
         For example, if your phone number is 555&#8209;123&#8209;4567, and your provider is AT&T, then 5551234567@txt.att.net is appropriate.
         Verizon phone numbers use the extension @vtext.com instead.
+        You can optionally also configure an authenticator app, which will take precedence; however, an email address is still recommended for a backup login method.
       </p>
       <br>
       <span id="statusBox"></span>
@@ -91,8 +130,11 @@
         <input class="c" type="text" id="emailField2" spellcheck="false" oninput="resize(this)">
       </div>
       <br><br>
+      <button class="e" id="submitButton" onclick="submitEmail()">Submit Email</button>
       <a class="e" href="__DOCUMENTATION__" target="_blank">Documentation</a>
-      <button class="e" id="submitButton" onclick="submitEmail()">Submit</button>
+      <br>
+      <button class="e" id="otpButton" onclick="configureOTP()">Configure Authenticator App</button>
+      <div id="qrcode" style="width:256px;height:256px;border:5px solid white;margin:auto;background-color:white;margin-top:1em;display:none"></div>
       <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
     </div>
     <script>
@@ -114,7 +156,7 @@
       if (email){
         setStatus("white", "Your current email is: "+email);
       }else{
-        setStatus("white", "You do not currently have MFA configured.");
+        setStatus("white", "You do not currently have an MFA email configured.");
       }
       emailField.focus();
     </script>

@@ -1,6 +1,8 @@
 package aces.webctrl.mfa.core;
 import com.controlj.green.addonsupport.*;
 import javax.servlet.*;
+
+import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.util.*;
 /**
@@ -139,6 +141,25 @@ public class Initializer implements ServletContextListener {
         return true;
       }else{
         --c.attempts;
+        return false;
+      }
+    }
+  }
+  /**
+   * Check whether the given security code is correct for the specified user.
+   */
+  public static boolean checkOTPCode(String username, String otp, String code, String token) throws URISyntaxException {
+    username = username.toLowerCase();
+    synchronized (securityCodes){
+      clearExpiredCodes();
+      final SecurityCode c = securityCodes.get(username);
+      if (c==null || !token.equals(c.getToken())){
+        return false;
+      }
+      if (Utility.checkCode(otp,code)){
+        c.attempts = 0;
+        return true;
+      }else{
         return false;
       }
     }

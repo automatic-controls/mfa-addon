@@ -26,21 +26,8 @@
         hiddenSpan.innerText = input.value;
         input.style.width = hiddenSpan.offsetWidth+"px";
       }
-      function validateInt(field,max){
-        var s = field.value;
-        if (s.length>0){
-          s = s.replaceAll(/\D/g,"");
-          if (s.length>0){
-            if (s.length>15){
-              s = s.substring(0,15);
-            }
-            s = parseInt(s);
-            s = Math.min(s,max);
-            field.value = s.toString();
-          }else{
-            field.value = "";
-          }
-        }
+      function validateInt(field){
+        field.value = field.value.replaceAll(/\D/g,"");
       }
       function setStatus(color,text){
         statusBox.innerText = text;
@@ -148,10 +135,10 @@
       <br><br>
       <div class="divGrouping">
         <label for="codeField">Security Code:</label>
-        <input class="c" type="text" id="codeField" spellcheck="false" oninput="validateInt(this,999999999);resize(this)">
+        <input class="c" type="text" id="codeField" spellcheck="false" oninput="validateInt(this);resize(this)">
       </div>
       <br><br>
-      <button class="e" id="resendButton" onclick="resendCode()">Resend Code</button>
+      <button class="e" id="resendButton" onclick="resendCode()">Email New Code</button>
       <button class="e" id="submitButton" onclick="submitCode()">Submit</button>
       <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
     </div>
@@ -159,6 +146,10 @@
       var mfa_user = "__USER__";
       var mfa_token = "__TOKEN__";
       var email = "__EMAIL__";
+      if (email.length==0){
+        resendButton.disabled = true;
+        resendButton.style.display = "none";
+      }
       resize(codeField);
       codeField.addEventListener("keypress", function (e){
         if (e.key==="Enter"){
@@ -166,7 +157,8 @@
           submitCode();
         }
       });
-      setStatus("white", "The security code sent to "+email+" expires at "+toDate(__EXPIRY__)+".");
+      var otp = __OTP__;
+      setStatus("white", otp?"Please provide your authenticator code.":"The security code sent to "+email+" expires at "+toDate(__EXPIRY__)+".");
       codeField.focus();
     </script>
   </body>

@@ -24,3 +24,6 @@ javax.mail-1.5.6
 webaccess-api-9.0.002
 
 Packaged Dependencies:
+commons-codec-1.15
+otp-java-2.0.3-sources
+otp-java-2.0.3

@@ -14,7 +14,7 @@ public class ConfigureMFAPage extends ServletBase {
     final String user = req.getParameter("mfa_user");
     final String token = req.getParameter("mfa_token");
     final String action = req.getParameter("action");
-    if (user==null || token==null || !Initializer.checkEmailToken(user, token, "save".equals("action"))){
+    if (user==null || token==null || !Initializer.checkEmailToken(user, token, "save".equals(action))){
       if (action==null){
         res.sendRedirect("/");
       }else{
@@ -33,13 +33,19 @@ public class ConfigureMFAPage extends ServletBase {
         .replace("__USER__", Utility.escapeJS(user))
         .replace("__TOKEN__", Utility.escapeJS(token))
       );
+    }else if (action.equals("otp")){
+      final String otp = Utility.createOTP(user);
+      Config.setOTP(user,otp);
+      Config.saveData();
+      res.setContentType("text/plain");
+      res.getWriter().print(otp);
     }else if (action.equals("save")){
       email = req.getParameter("mfa_email");
       if (email==null){
         res.setStatus(400);
         return;
       }
-      Config.setMapping(user,email);
+      Config.setEmail(user,email);
       Config.saveData();
     }else{
       res.sendError(400, "Invalid action parameter.");

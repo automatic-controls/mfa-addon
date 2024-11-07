@@ -8,6 +8,14 @@ public class MainPage extends ServletBase {
     if (action==null){
       res.setContentType("text/html");
       res.getWriter().print(getHTML(req));
+    }else if (action.equals("deleteOTP")){
+      final String user = req.getParameter("user");
+      if (user==null){
+        res.setStatus(400);
+        return;
+      }
+      Config.setOTP(user,null);
+      Config.saveData();
     }else if (action.equals("save")){
       final String enforceMFA = req.getParameter("enforceMFA");
       final String allowServiceLogins = req.getParameter("allowServiceLogins");
@@ -51,15 +59,17 @@ public class MainPage extends ServletBase {
       Config.allowServiceLogins = _allowServiceLogins;
       Config.bypassOnEmailFailure = _bypassOnEmailFailure;
       Config.setWhitelist(_whitelist);
-      Config.setMappings(map);
+      Config.setEmails(map);
       Config.saveData();
     }else if (action.equals("load")){
       final StringBuilder sb = new StringBuilder(1024);
       sb.append(Utility.format("{\"enforceMFA\":$0,\"allowServiceLogins\":$1,\"bypassOnEmailFailure\":$2,", Config.enforceMFA, Config.allowServiceLogins, Config.bypassOnEmailFailure));
       sb.append("\"mappings\":");
-      Config.printMappings(sb);
+      Config.printEmails(sb);
       sb.append(",\"whitelist\":");
       Config.printWhitelist(sb);
+      sb.append(",\"otps\":");
+      Config.printOTPs(sb);
       sb.append('}');
       res.setContentType("application/json");
       res.getWriter().print(sb.toString());

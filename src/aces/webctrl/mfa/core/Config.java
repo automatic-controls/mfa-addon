@@ -12,6 +12,8 @@ public class Config {
   private static volatile Path file;
   private final static HashMap<String,String> usernameEmailMappings = new HashMap<>(32);
   private final static ReentrantReadWriteLock mapLock = new ReentrantReadWriteLock();
+  private final static HashMap<String,String> usernameOTPMappings = new HashMap<>(32);
+  private final static ReentrantReadWriteLock otpLock = new ReentrantReadWriteLock();
   /**
    * When {@link #enforceMFA} is enabled, these users are exceptions where MFA is not necessarily enforced.
    * When the MFA email fails to send, these users can bypass MFA in all cases.
@@ -78,7 +80,7 @@ public class Config {
     }
     sb.append(']');
   }
-  public static void printMappings(StringBuilder sb){
+  public static void printEmails(StringBuilder sb){
     sb.append('[');
     mapLock.readLock().lock();
     try{
@@ -96,7 +98,25 @@ public class Config {
     }
     sb.append(']');
   }
-  public static void setMappings(Map<String,String> map){
+  public static void printOTPs(StringBuilder sb){
+    sb.append('[');
+    otpLock.readLock().lock();
+    try{
+      boolean first = true;
+      for (Map.Entry<String,String> e: usernameOTPMappings.entrySet()){
+        if (first){
+          first = false;
+        }else{
+          sb.append(',');
+        }
+        sb.append('"').append(Utility.escapeJSON(e.getKey())).append('"');
+      }
+    }finally{
+      otpLock.readLock().unlock();
+    }
+    sb.append(']');
+  }
+  public static void setEmails(Map<String,String> map){
     mapLock.writeLock().lock();
     try{
       usernameEmailMappings.clear();
@@ -105,7 +125,7 @@ public class Config {
       mapLock.writeLock().unlock();
     }
   }
-  public static String setMapping(String username, String email){
+  public static String setEmail(String username, String email){
     mapLock.writeLock().lock();
     try{
       if (email==null){
@@ -131,6 +151,43 @@ public class Config {
       return usernameEmailMappings.containsKey(username);
     }finally{
       mapLock.readLock().unlock();
+    }
+  }
+  public static void setOTPs(Map<String,String> map){
+    otpLock.writeLock().lock();
+    try{
+      usernameOTPMappings.clear();
+      usernameOTPMappings.putAll(map);
+    }finally{
+      otpLock.writeLock().unlock();
+    }
+  }
+  public static String setOTP(String username, String otp){
+    otpLock.writeLock().lock();
+    try{
+      if (otp==null){
+        return usernameOTPMappings.remove(username);
+      }else{
+        return usernameOTPMappings.put(username,otp);
+      }
+    }finally{
+      otpLock.writeLock().unlock();
+    }
+  }
+  public static String getOTP(String username){
+    otpLock.readLock().lock();
+    try{
+      return usernameOTPMappings.get(username);
+    }finally{
+      otpLock.readLock().unlock();
+    }
+  }
+  public static boolean containsOTPFor(String username){
+    otpLock.readLock().lock();
+    try{
+      return usernameOTPMappings.containsKey(username);
+    }finally{
+      otpLock.readLock().unlock();
     }
   }
   /**
@@ -226,6 +283,19 @@ public class Config {
           mapLock.writeLock().unlock();
         }
         size = s.readInt();
+        otpLock.writeLock().lock();
+        try{
+          usernameOTPMappings.clear();
+          String k,v;
+          for (i=0;i<size;++i){
+            k = s.readString();
+            v = new String(Utility.obfuscate(s.readString().toCharArray()));
+            usernameOTPMappings.put(k,v);
+          }
+        }finally{
+          otpLock.writeLock().unlock();
+        }
+        size = s.readInt();
         whitelistLock.writeLock().lock();
         try{
           whitelist.clear();
@@ -269,6 +339,16 @@ public class Config {
         }
       }finally{
         mapLock.readLock().unlock();
+      }
+      otpLock.readLock().lock();
+      try{
+        s.write(usernameOTPMappings.size());
+        for (Map.Entry<String,String> e: usernameOTPMappings.entrySet()){
+          s.write(e.getKey());
+          s.write(new String(Utility.obfuscate(e.getValue().toCharArray())));
+        }
+      }finally{
+        otpLock.readLock().unlock();
       }
       whitelistLock.readLock().lock();
       try{
