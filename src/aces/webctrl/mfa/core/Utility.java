@@ -29,11 +29,12 @@ public class Utility {
   /**
    * @return a new TOTP URI string for the given user.
    */
+  @SuppressWarnings("deprecation")
   public static String createOTP(String user) throws URISyntaxException {
     return new TOTPGenerator.Builder(SecretGenerator.generate())
     .withHOTPGenerator(builder -> {
       builder.withPasswordLength(6);
-      builder.withAlgorithm(HMACAlgorithm.SHA1);
+      builder.withAlgorithm(HMACAlgorithm.SHA1);//deprecated, but Google Authenticator does not support any stronger algorithms
     })
     .withPeriod(java.time.Duration.ofSeconds(30))
     .build().getURI("WebCTRL", user).toString();

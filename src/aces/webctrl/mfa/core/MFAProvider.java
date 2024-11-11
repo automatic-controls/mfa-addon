@@ -3,9 +3,7 @@ import com.controlj.green.addonsupport.web.auth.*;
 import java.io.*;
 import javax.servlet.*;
 import javax.servlet.http.*;
-
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 public class MFAProvider extends StandardWebOperatorProvider {
   public static String encodeURL(String param){
