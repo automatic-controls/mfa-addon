@@ -1,6 +1,6 @@
 <extension version="1">
   <name>MFA</name>
-  <description>In order to provide MFA, one-time security codes are emailed to users upon login. Alternatively, an authenticator app can be configured for MFA.</description>
+  <description>Provides MFA for WebCTRL logins through an authenticator app or emailed security codes.</description>
   <version>0.3.0</version>
   <vendor>Automatic Controls Equipment Systems, Inc.</vendor>
   <web-operator-provider>aces.webctrl.mfa.core.MFAProvider</web-operator-provider>
