@@ -12,14 +12,19 @@ public class ChangeEmailPage extends ServletBase {
   }
   @Override public void exec(final HttpServletRequest req, final HttpServletResponse res) throws Throwable {
     final String user = getUsername(req);
+    if (Config.isControlledByAPI(user,true)){
+      res.sendError(403, "Please change your MFA settings from "+Config.getServerURL());
+      return;
+    }
     final String action = req.getParameter("action");
     if (action==null){
-      final String email = Config.getEmail(user);
+      final String email = Config.emailEnabled?Config.getEmail(user):null;
       res.setContentType("text/html");
       res.getWriter().print(getHTML(req)
         .replace("__EMAIL__", Utility.escapeJS(email))
+        .replace("__EMAIL_ENABLED__", String.valueOf(Config.emailEnabled))
       );
-    }else if (action.equals("save")){
+    }else if (action.equals("save") && Config.emailEnabled){
       final String email = req.getParameter("mfa_email");
       if (email==null){
         res.setStatus(400);

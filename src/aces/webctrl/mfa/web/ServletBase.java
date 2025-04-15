@@ -71,7 +71,7 @@ public abstract class ServletBase extends HttpServlet {
       html = Utility.loadResourceAsString("aces/webctrl/mfa/resources/"+getClass().getSimpleName()+".html")
       .replace("href=\"../../../../../root/webapp/main.css\"", "href=\"main.css\"")
       .replace("src=\"../../../../../root/webapp/qrcode.min.js\"", "src=\"qrcode.min.js\"")
-      .replace("__DOCUMENTATION__", "documentation.html");
+      .replace("__DOCUMENTATION__", "https://github.com/automatic-controls/mfa-addon");
     }
     return html.replace("__PREFIX__", req.getContextPath());
   }

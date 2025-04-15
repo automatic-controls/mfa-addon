@@ -10,16 +10,55 @@ import java.util.List;
 import java.util.regex.*;
 import java.time.*;
 import java.time.format.*;
+import javax.servlet.http.*;
 import com.bastiaanjansen.otp.*;
 /**
  * Contains various utility methods used throughout the application.
  */
 public class Utility {
   public final static DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault());
-  public final static Pattern IPV4_PATTERN = Pattern.compile("^(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)$");
   private final static Pattern SUBST_FORMATTER = Pattern.compile("\\$(\\d)");
   private final static Pattern LINE_ENDING = Pattern.compile("\\r?+\\n");
-  private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+  private final static byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+  private final static Pattern FIRST_COMMA_LIST_PATTERN = Pattern.compile("^\\s*+([^,]+?)\\s*+(?:,|$)");
+  private final static Pattern FIRST_FOR_LIST_PATTERN = Pattern.compile("(?:^|[,;])\\s*+for\\s*+=\\s*+([^,;]+?)\\s*+(?:$|[,;])", Pattern.CASE_INSENSITIVE);
+  /**
+   * Attempts to respect headers set by proxies and load balancers.
+   */
+  public static String getRemoteAddr(HttpServletRequest req){
+    if (Config.trustProxyHeaders){
+      Matcher m;
+      String addr = req.getHeader("Forwarded");
+      if (addr!=null){
+        m = FIRST_FOR_LIST_PATTERN.matcher(addr);
+        if (m.find()){
+          addr = m.group(1);
+        }else{
+          addr = null;
+        }
+      }
+      if (addr==null){
+        addr = req.getHeader("X-Forwarded-For");
+        if (addr!=null){
+          m = FIRST_COMMA_LIST_PATTERN.matcher(addr);
+          if (m.find()){
+            addr = m.group(1);
+          }else{
+            addr = null;
+          }
+        }
+        if (addr==null){
+          addr = req.getHeader("X-Real-IP");
+          if (addr==null || addr.isBlank()){
+            addr = req.getRemoteAddr();
+          }
+        }
+      }
+      return addr.trim().toLowerCase();
+    }else{
+      return req.getRemoteAddr().toLowerCase();
+    }
+  }
   /**
    * @return whether the given code validates against the given TOTP URI string.
    */

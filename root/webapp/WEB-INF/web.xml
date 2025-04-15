@@ -46,25 +46,20 @@
     <url-pattern>/ChangeEmail</url-pattern>
   </servlet-mapping>
 
+  <servlet>
+    <servlet-name>RestAPI</servlet-name>
+    <servlet-class>aces.webctrl.mfa.web.RestAPI</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>RestAPI</servlet-name>
+    <url-pattern>/api</url-pattern>
+  </servlet-mapping>
+
   <security-constraint>
     <web-resource-collection>
       <web-resource-name>WEB</web-resource-name>
       <url-pattern>/*</url-pattern>
     </web-resource-collection>
   </security-constraint>
-
-  <filter>
-    <filter-name>RoleFilterAJAX</filter-name>
-    <filter-class>com.controlj.green.addonsupport.web.RoleFilter</filter-class>
-    <init-param>
-      <param-name>roles</param-name>
-      <param-value>login</param-value>
-    </init-param>
-  </filter>
-  <filter-mapping>
-    <filter-name>RoleFilterAJAX</filter-name>
-    <url-pattern>/documentation.html</url-pattern>
-    <url-pattern>/documentation.md</url-pattern>
-  </filter-mapping>
 
 </web-app>

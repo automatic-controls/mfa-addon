@@ -7,6 +7,8 @@ package aces.webctrl.mfa.core;
 import com.controlj.green.addonsupport.web.auth.AuthenticationManager;
 import com.controlj.green.extensionsupport.Extension;
 import com.controlj.green.core.ui.UserSession;
+import com.controlj.green.core.data.*;
+import com.controlj.green.common.policy.*;
 /**
  * Namespace which contains methods to access small sections of a few internal WebCTRL APIs.
  */
@@ -15,6 +17,26 @@ public class HelperAPI {
    * Specifies whether methods of this API should log stack traces generated from errors.
    */
   private final static boolean logErrors = true;
+  /**
+   * @return Whether the specified user exists in the system, case insensitive, and that the password validates.
+   * If {@code pass} is {@code null}, the password is not validated.
+   */
+  public static boolean validateUser(String user, String pass){
+    try(
+      CoreDataSession cds = CoreDataSession.open(0);
+    ){
+      CoreNode op = cds.getExpectedNode("/trees/config/operators/operatorlist").getChildByAttribute(CoreNode.KEY, user, true);
+      if (op==null){
+        return false;
+      }
+      return pass==null || validatePassword(op, pass);
+    }catch(CoreNotFoundException e){
+      return false;
+    }catch(Throwable t){
+      if (logErrors){ Initializer.log(t); }
+      return false;
+    }
+  }
   /**
    * Terminates sessions for all foreign operators.
    * @return whether this method executed successfully.
@@ -63,5 +85,22 @@ public class HelperAPI {
       if (logErrors){ Initializer.log(t); }
       return false;
     }
+  }
+  /**
+   * @return whether the given password is correct.
+   */
+  public static boolean validatePassword(CoreNode operator, String password) throws CoreNotFoundException {
+    return PolicyUtils_.rawMatches(operator.getChild("password").getValueString(), password);
+  }
+}
+/**
+ * We need this class to access a protected method {@code rawMatches(String,String)} of PolicyUtils.
+ * The other option is {@code matches(String,String)}; however, this would create a delay on failed validation.
+ * This no longer impacts WebCTRL9.0 since there is an added parameter to the matches method which specifies whether to delay or not,
+ * but we keep this for backwards compatibility.
+ */
+class PolicyUtils_ extends PolicyUtils {
+  public static boolean rawMatches(String digestedData, String clearData){
+    return PolicyUtils.rawMatches(digestedData, clearData);
   }
 }

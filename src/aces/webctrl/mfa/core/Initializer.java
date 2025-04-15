@@ -1,10 +1,11 @@
 package aces.webctrl.mfa.core;
 import com.controlj.green.addonsupport.*;
+import com.controlj.green.core.main.CoreProduct;
+import com.controlj.green.common.LanguageManager;
 import javax.servlet.*;
-
-import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.util.*;
+import java.net.URISyntaxException;
 /**
  * This class contains most of the life-cycle management logic for this add-on.
  */
@@ -15,6 +16,8 @@ public class Initializer implements ServletContextListener {
   private final static boolean LOG_TO_STDOUT = false;
   /** Contains basic information about this addon */
   public volatile static AddOnInfo info = null;
+  /** The owner specified in the WebCTRL license file prefixed with &src= */
+  public volatile static String licensedTo = "";
   /** The name of this addon */
   private volatile static String name;
   /** Prefix used for constructing relative URL paths */
@@ -38,7 +41,15 @@ public class Initializer implements ServletContextListener {
     prefix = '/'+name+'/';
     root = info.getPrivateDir().toPath();
     logger = info.getDateStampLogger();
-    Config.init(root.resolve("params.dat"));
+    try{
+      licensedTo = CoreProduct.getOwnerName(LanguageManager.getSystemLocale().toString()).trim();
+      if (licensedTo.isEmpty()){
+        licensedTo = "";
+      }else{
+        licensedTo = "&src="+MFAProvider.encodeURL(licensedTo);
+      }
+    }catch(Throwable t){}
+    Config.init(root.resolve("params.dat"), root.resolve("url.dat"), root.resolve("cookies.dat"));
     if (AUTO_DEPLOY){
       HelperAPI.logoutAllForeign();
       HelperAPI.activateWebOperatorProvider(name);
@@ -128,39 +139,60 @@ public class Initializer implements ServletContextListener {
    */
   public static boolean checkCode(String username, int code, String token, boolean removeOnSuccess){
     username = username.toLowerCase();
-    synchronized (securityCodes){
-      clearExpiredCodes();
-      final SecurityCode c = securityCodes.get(username);
-      if (c==null || !token.equals(c.getToken())){
-        return false;
-      }
-      if (c.code==code){
-        if (removeOnSuccess){
-          c.attempts = 0;
+    boolean ret = true;
+    try{
+      synchronized (securityCodes){
+        clearExpiredCodes();
+        final SecurityCode c = securityCodes.get(username);
+        if (c==null || !token.equals(c.getToken())){
+          return ret=false;
         }
-        return true;
-      }else{
-        --c.attempts;
-        return false;
+        if (c.code==code && c.code!=0){
+          if (removeOnSuccess){
+            c.attempts = 0;
+          }
+          return ret=true;
+        }else{
+          --c.attempts;
+          return ret=false;
+        }
+      }
+    }finally{
+      if (!ret){
+        Config.addFailedAttempt(username);
       }
     }
   }
   /**
    * Check whether the given security code is correct for the specified user.
    */
-  public static boolean checkOTPCode(String username, String otp, String code, String token) throws URISyntaxException {
+  public static boolean checkOTPCode(String username, String otp, String code, String token, String ip, boolean cache) throws URISyntaxException {
     username = username.toLowerCase();
-    synchronized (securityCodes){
-      clearExpiredCodes();
-      final SecurityCode c = securityCodes.get(username);
-      if (c==null || !token.equals(c.getToken())){
-        return false;
-      }
-      if (Utility.checkCode(otp,code)){
-        c.attempts = 0;
+    if (token==null){
+      if (otp!=null && Utility.checkCode(otp,code) || otp==null && Config.submitToAPI(username, code, ip, cache)){
+        if (otp!=null && Config.codeAlreadySubmitted(username, code)){
+          return false;
+        }
         return true;
       }else{
         return false;
+      }
+    }else{
+      synchronized (securityCodes){
+        clearExpiredCodes();
+        final SecurityCode c = securityCodes.get(username);
+        if (c==null || !token.equals(c.getToken())){
+          return false;
+        }
+        if (otp!=null && Utility.checkCode(otp,code) || otp==null && Config.submitToAPI(username, code, ip, cache)){
+          if (otp!=null && Config.codeAlreadySubmitted(username, code)){
+            return false;
+          }
+          c.attempts = 0;
+          return true;
+        }else{
+          return false;
+        }
       }
     }
   }

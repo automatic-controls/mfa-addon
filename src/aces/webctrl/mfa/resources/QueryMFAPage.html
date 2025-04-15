@@ -36,7 +36,7 @@
       function submitCode(){
         const submitButton = document.getElementById("submitButton");
         if (!submitButton.disabled){
-          const mfa_code = codeField.value;
+          const mfa_code = mfaCodeField.value;
           if (!mfa_code){
             setStatus("red","Please enter your security code.");
             return;
@@ -59,8 +59,8 @@
                     "&mfa_code="+encodeURIComponent(mfa_code)
                 }else{
                   setStatus("red","Incorrect or expired code, or maximum attempts (3) exceeded.");
-                  codeField.value = "";
-                  resize(codeField);
+                  mfaCodeField.value = "";
+                  resize(mfaCodeField);
                 }
               }else if (this.status==302 || this.status==403){
                 window.location.href = window.location.origin;
@@ -92,8 +92,8 @@
             if (this.readyState===4){
               if (this.status===200){
                 mfa_token = this.responseText;
-                codeField.value = "";
-                resize(codeField);
+                mfaCodeField.value = "";
+                resize(mfaCodeField);
                 setStatus("lightgreen", "Please enter the security code sent to "+email);
               }else if (this.status==302 || this.status==403){
                 window.location.href = window.location.origin;
@@ -134,8 +134,8 @@
       <span id="statusBox"></span>
       <br><br>
       <div class="divGrouping">
-        <label for="codeField">Security Code:</label>
-        <input class="c" type="text" id="codeField" spellcheck="false" oninput="validateInt(this);resize(this)">
+        <label for="mfaCodeField">Security Code:</label>
+        <input class="c" type="text" name="mfaCode" id="mfaCodeField" spellcheck="false" oninput="validateInt(this);resize(this)">
       </div>
       <br><br>
       <button class="e" id="resendButton" onclick="resendCode()">Email New Code</button>
@@ -150,8 +150,8 @@
         resendButton.disabled = true;
         resendButton.style.display = "none";
       }
-      resize(codeField);
-      codeField.addEventListener("keypress", function (e){
+      resize(mfaCodeField);
+      mfaCodeField.addEventListener("keypress", function (e){
         if (e.key==="Enter"){
           e.preventDefault();
           submitCode();
@@ -159,7 +159,7 @@
       });
       var otp = __OTP__;
       setStatus("white", otp?"Please provide your authenticator code.":"The security code sent to "+email+" expires at "+toDate(__EXPIRY__)+".");
-      codeField.focus();
+      mfaCodeField.focus();
     </script>
   </body>
 </html>

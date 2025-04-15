@@ -4,6 +4,9 @@ import com.controlj.green.addonsupport.access.*;
 import com.controlj.green.addonsupport.web.menus.*;
 public class SystemMenuEditor implements SystemMenuProvider {
   @Override public void updateMenu(Operator op, Menu menu){
+    if (Config.isControlledByAPI(op.getLoginName().toLowerCase(), true)){
+      return;
+    }
     try{
       menu.addMenuEntry(MenuEntryFactory
         .newEntry("aces.webctrl.mfa.ChangeEmail")

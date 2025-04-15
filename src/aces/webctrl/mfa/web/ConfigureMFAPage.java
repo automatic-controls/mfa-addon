@@ -11,10 +11,10 @@ public class ConfigureMFAPage extends ServletBase {
     return ret;
   }
   @Override public void exec(final HttpServletRequest req, final HttpServletResponse res) throws Throwable {
-    final String user = req.getParameter("mfa_user");
+    String user = req.getParameter("mfa_user");
     final String token = req.getParameter("mfa_token");
     final String action = req.getParameter("action");
-    if (user==null || token==null || !Initializer.checkEmailToken(user, token, "save".equals(action))){
+    if (user==null || token==null || !Initializer.checkEmailToken(user=user.toLowerCase(), token, "save".equals(action))){
       if (action==null){
         res.sendRedirect("/");
       }else{
@@ -22,7 +22,11 @@ public class ConfigureMFAPage extends ServletBase {
       }
       return;
     }
-    String email = Config.getEmail(user);
+    if (Config.isControlledByAPI(user,true)){
+      res.sendError(403, "Please change your MFA settings from "+Config.getServerURL());
+      return;
+    }
+    String email = Config.emailEnabled?Config.getEmail(user):null;
     if (email!=null){
       res.sendError(400, "An MFA email has already been configured for this user.");
       return;
@@ -32,6 +36,7 @@ public class ConfigureMFAPage extends ServletBase {
       res.getWriter().print(getHTML(req)
         .replace("__USER__", Utility.escapeJS(user))
         .replace("__TOKEN__", Utility.escapeJS(token))
+        .replace("__EMAIL_ENABLED__", String.valueOf(Config.emailEnabled))
       );
     }else if (action.equals("otp")){
       final String otp = Utility.createOTP(user);
@@ -39,7 +44,7 @@ public class ConfigureMFAPage extends ServletBase {
       Config.saveData();
       res.setContentType("text/plain");
       res.getWriter().print(otp);
-    }else if (action.equals("save")){
+    }else if (action.equals("save") && Config.emailEnabled){
       email = req.getParameter("mfa_email");
       if (email==null){
         res.setStatus(400);

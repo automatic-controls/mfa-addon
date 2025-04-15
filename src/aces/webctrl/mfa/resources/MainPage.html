@@ -70,6 +70,10 @@
           const enforceMFA = enforceMFACheckbox.checked;
           const allowServiceLogins = allowServiceLoginsCheckbox.checked;
           const bypassOnEmailFailure = bypassOnEmailFailureCheckbox.checked;
+          const emailEnabled = emailEnabledCheckbox.checked;
+          const cookiesEnabled = cookiesEnabledCheckbox.checked;
+          const trustProxyHeaders = trustProxyHeadersCheckbox.checked;
+          const apiEnabled = apiEnabledCheckbox.checked;
           const _mappings = [];
           for (const e of document.getElementById("mappingBody").getElementsByTagName("TR")){
             if (e.mfa_operator && e.mfa_email){
@@ -108,6 +112,10 @@
             "enforceMFA="+encodeURIComponent(enforceMFA)+
             "&allowServiceLogins="+encodeURIComponent(allowServiceLogins)+
             "&bypassOnEmailFailure="+encodeURIComponent(bypassOnEmailFailure)+
+            "&emailEnabled="+encodeURIComponent(emailEnabled)+
+            "&cookiesEnabled="+encodeURIComponent(cookiesEnabled)+
+            "&trustProxyHeaders="+encodeURIComponent(trustProxyHeaders)+
+            "&apiEnabled="+encodeURIComponent(apiEnabled)+
             "&mappings="+encodeURIComponent(mappings)+
             "&whitelist="+encodeURIComponent(whitelist)
           );
@@ -149,10 +157,117 @@
           req.send();
         }
       }
+      function downloadURI(uri, name) {
+        const link = document.createElement("A");
+        link.download = name;
+        link.href = uri;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      function genAPI(){
+        if (!changeAllowed){
+          return;
+        }
+        const apiButton = document.getElementById("apiButton");
+        if (!apiButton.disabled){
+          apiButton.disabled = true;
+          disableChanges();
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/index?action=apikey");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                downloadURI("data:text/plain;charset=utf-8,"+encodeURIComponent(window.location.origin+" "+this.responseText), "mfa_api.conf");
+                setStatus("lightgreen","Success: "+this.responseText);
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              apiButton.disabled = false;
+              enableChanges();
+            }
+          };
+          setStatus("white","Generating API key...");
+          req.send();
+        }
+      }
+      function deleteAPI(){
+        if (!changeAllowed){
+          return;
+        }
+        const deleteApiButton = document.getElementById("deleteApiButton");
+        if (!deleteApiButton.disabled){
+          deleteApiButton.disabled = true;
+          disableChanges();
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/index?action=deleteapi");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                setStatus("lightgreen","Successful.");
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              deleteApiButton.disabled = false;
+              enableChanges();
+            }
+          };
+          setStatus("white","Deleting API configuration...");
+          req.send();
+        }
+      }
+      function uploadAPI(){
+        if (!changeAllowed){
+          return;
+        }
+        const uploadApiButton = document.getElementById("uploadApiButton");
+        if (!uploadApiButton.disabled && fileField.value.length>0){
+          if (fileField.files[0].size>8388608){
+            fileField.value = null;
+            alert("Selected file size has exceeded the 8MB limit.");
+            return;
+          }
+          uploadApiButton.disabled = true;
+          disableChanges();
+          const formData = new FormData();
+          formData.append("file",fileField.files[0]);
+          fileField.value = null;
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/index?action=uploadapi");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                setStatus("lightgreen","Successful.");
+              }else if (this.status==0){
+                setStatus("red","Request timed out.");
+              }else{
+                setStatus("red","HTTP Error "+this.status);
+              }
+              uploadApiButton.disabled = false;
+              enableChanges();
+            }
+          };
+          setStatus("white","Uploading API configuration...");
+          req.send(formData);
+        }
+      }
       function render(data){
         enforceMFACheckbox.checked = data["enforceMFA"];
         allowServiceLoginsCheckbox.checked = data["allowServiceLogins"];
         bypassOnEmailFailureCheckbox.checked = data["bypassOnEmailFailure"];
+        emailEnabledCheckbox.checked = data["emailEnabled"];
+        cookiesEnabledCheckbox.checked = data["cookiesEnabled"];
+        trustProxyHeadersCheckbox.checked = data["trustProxyHeaders"];
+        apiEnabledCheckbox.checked = data["apiEnabled"];
         const mappingBody = document.getElementById("mappingBody");
         while (mappingBody.children.length>1){
           mappingBody.removeChild(mappingBody.firstElementChild);
@@ -215,12 +330,20 @@
         enforceMFACheckbox.disabled = true;
         allowServiceLoginsCheckbox.disabled = true;
         bypassOnEmailFailureCheckbox.disabled = true;
+        emailEnabledCheckbox.disabled = true;
+        cookiesEnabledCheckbox.disabled = true;
+        trustProxyHeadersCheckbox.disabled = true;
+        apiEnabledCheckbox.disabled = true;
       }
       function enableChanges(){
         changeAllowed = true;
         enforceMFACheckbox.disabled = false;
         allowServiceLoginsCheckbox.disabled = false;
         bypassOnEmailFailureCheckbox.disabled = false;
+        emailEnabledCheckbox.disabled = false;
+        cookiesEnabledCheckbox.disabled = false;
+        trustProxyHeadersCheckbox.disabled = false;
+        apiEnabledCheckbox.disabled = false;
       }
       function createMapping(){
         if (!changeAllowed){
@@ -333,25 +456,35 @@
       <br><br>
       <div class="row">
         <div class="column">
-          <table style="float:right;margin-right:0.5em" title="Operators in this list have MFA configured to the specified email address.">
-            <thead>
-              <tr>
-                <th colspan="3">MFA Email Mappings</th>
-              </tr>
-              <tr>
-                <th>Operator</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="mappingBody">
-              <tr id="mappingCreator">
-                <td><input class="c" type="text" id="usernameField" spellcheck="false" oninput="resize(this)"></td>
-                <td><input class="c" type="text" id="emailField" spellcheck="false" oninput="resize(this)"></td>
-                <td><button class="c" onclick="createMapping()">Create</button></td>
-              </tr>
-            </tbody>
-          </table>
+          <div style="float:right;margin-right:0.5em">
+            <table>
+              <thead>
+                <tr><th colspan="2">Authenticator Mappings</th></tr>
+                <tr><th>Operator</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="otpBody"></tbody>
+            </table>
+            <br>
+            <table title="Operators in this list have MFA configured to the specified email address.">
+              <thead>
+                <tr>
+                  <th colspan="3">MFA Email Mappings</th>
+                </tr>
+                <tr>
+                  <th>Operator</th>
+                  <th>Email</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="mappingBody">
+                <tr id="mappingCreator">
+                  <td><input class="c" type="text" id="usernameField" spellcheck="false" oninput="resize(this)"></td>
+                  <td><input class="c" type="text" id="emailField" spellcheck="false" oninput="resize(this)"></td>
+                  <td><button class="c" onclick="createMapping()">Create</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="column">
           <div style="text-align:left">
@@ -363,9 +496,25 @@
               <input type="checkbox" id="allowServiceLoginsCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
               <label for="allowServiceLoginsCheckbox" style="vertical-align:middle">Allow Service Logins</label>
             </div>
-            <div class="divGrouping2" title="Specifies whether to bypass MFA when WebCTRL's email server is misconfigured.">
+            <div class="divGrouping2" title="Specifies whether to bypass MFA when WebCTRL's email server is misconfigured. This does not apply to users with an authenticator app configured.">
               <input type="checkbox" id="bypassOnEmailFailureCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
-              <label for="bypassOnEmailFailureCheckbox" style="vertical-align:middle">Bypass MFA on Email Server Failure</label>
+              <label for="bypassOnEmailFailureCheckbox" style="vertical-align:middle">Email Failure Bypass</label>
+            </div>
+            <div class="divGrouping2" title="Specifies whether to allow MFA codes sent by email. The preferred method is to use an authenticator app.">
+              <input type="checkbox" id="emailEnabledCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
+              <label for="emailEnabledCheckbox" style="vertical-align:middle">Email Enabled</label>
+            </div>
+            <div class="divGrouping2" title="Specifies whether to bypass MFA on subsequent logins from the same IP address and username for one week after the first successful MFA login.">
+              <input type="checkbox" id="cookiesEnabledCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle" checked>
+              <label for="cookiesEnabledCheckbox" style="vertical-align:middle">Once-A-Week Bypass</label>
+            </div>
+            <div class="divGrouping2" title="This option is applicable only when 'Once-A-Week Bypass' is enabled. This specifies whether to trust the Forwarded, X-Forwarded-For, and X-Real-IP headers. This is useful when WebCTRL is behind a reverse proxy. When WebCTRL is not behind a proxy, it is recommended to leave this disabled for security reasons.">
+              <input type="checkbox" id="trustProxyHeadersCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle">
+              <label for="trustProxyHeadersCheckbox" style="vertical-align:middle">Trust Proxy Headers</label>
+            </div>
+            <div class="divGrouping2" title="Specifies whether to enable the public REST API for MFA authentication.">
+              <input type="checkbox" id="apiEnabledCheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle">
+              <label for="apiEnabledCheckbox" style="vertical-align:middle">REST API</label>
             </div>
           </div>
           <table style="float:left;margin-left:2.5em;margin-top:1em" title="Operators in this list behave as if MFA is not enforced, service logins are allowed, and MFA bypass on email server failure is enabled.">
@@ -390,17 +539,14 @@
       <br>
       <button class="e" id="saveButton" onclick="save()">Save Changes</button>
       <button class="e" id="loadButton" onclick="load()">Discard Changes</button>
-      <br>
       <a class="e" href="__DOCUMENTATION__" target="_blank" style="display:inline-block;margin-top:0.4em">Documentation</a>
-      <br><br>
-      <table>
-        <thead>
-          <tr><th colspan="2">Authenticator Mappings</th></tr>
-          <tr><th>Operator</th><th>Actions</th></tr>
-        </thead>
-        <tbody id="otpBody"></tbody>
-      </table>
+      <br>
+      <button class="e" id="apiButton" onclick="genAPI()">Generate API Key</button>
+      <button class="e" id="uploadApiButton" onclick="fileField.click()">Upload API Config</button>
+      <button class="e" id="deleteApiButton" onclick="deleteAPI()">Delete API Config</button>
+      <br>
       <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
+      <input type="file" id="fileField" accept=".conf" style="display:none" oninput="uploadAPI()">
     </div>
     <script>
       var changes;

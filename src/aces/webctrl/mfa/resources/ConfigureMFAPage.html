@@ -116,7 +116,7 @@
         You may enter phone number emails as well.
         For example, if your phone number is 555&#8209;123&#8209;4567, and your provider is AT&T, then 5551234567@txt.att.net is appropriate.
         Verizon phone numbers use the extension @vtext.com instead.
-        You can optionally also configure an authenticator app, which will take precedence; however, an email address is still recommended for a backup login method.
+        You can optionally also configure an authenticator app, which will take precedence.
       </p>
       <br>
       <span id="statusBox"></span>
@@ -140,22 +140,32 @@
     <script>
       var mfa_user = "__USER__";
       var mfa_token = "__TOKEN__";
+      const email_enabled = __EMAIL_ENABLED__;
       resize(emailField);
       resize(emailField2);
-      emailField.addEventListener("keypress", function (e){
-        if (e.key==="Enter"){
-          e.preventDefault();
-          emailField2.focus();
-        }
-      });
-      emailField2.addEventListener("keypress", function (e){
-        if (e.key==="Enter"){
-          e.preventDefault();
-          submitEmail();
-        }
-      });
-      setStatus("white", "");
-      emailField.focus();
+      if (!email_enabled){
+        setStatus("white", "NOTICE: MFA emails have been disabled. Please configure an authenticator app instead.");
+        submitButton.disabled = true;
+        emailField.disabled = true;
+        emailField2.disabled = true;
+      }else{
+        setStatus("white", "");
+      }
+      if (email_enabled){
+        emailField.addEventListener("keypress", function (e){
+          if (e.key==="Enter"){
+            e.preventDefault();
+            emailField2.focus();
+          }
+        });
+        emailField2.addEventListener("keypress", function (e){
+          if (e.key==="Enter"){
+            e.preventDefault();
+            submitEmail();
+          }
+        });
+        emailField.focus();
+      }
     </script>
   </body>
 </html>
