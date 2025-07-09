@@ -91,12 +91,14 @@
                   colorLight: "#FFFFFF"
                 });
                 setStatus("lightgreen","Success! Please scan the QR code with your authenticator app before leaving this page.");
-              }else if (this.status==0){
-                setStatus("red","Request timed out.");
               }else{
-                setStatus("red","HTTP Error "+this.status);
+                if (this.status==0){
+                  setStatus("red","Request timed out.");
+                }else{
+                  setStatus("red","HTTP Error "+this.status);
+                }
+                otpButton.disabled = false;
               }
-              otpButton.disabled = false;
             }
           };
           setStatus("white","Submitting...");
@@ -111,28 +113,29 @@
   <body>
     <div style="text-align:center;">
       <h1 id="mainTitle">Configure MFA</h1>
-      <p style="max-width:50%;margin:0 auto">
+      <p id="instructText" style="max-width:50%;margin:0 auto">
         Please enter an email where you can receive MFA security codes.
         You may enter phone number emails as well.
         For example, if your phone number is 555&#8209;123&#8209;4567, and your provider is AT&T, then 5551234567@txt.att.net is appropriate.
         Verizon phone numbers use the extension @vtext.com instead.
         You can optionally also configure an authenticator app, which will take precedence.
+        Google Authenticator is recommended.
       </p>
       <br>
       <span id="statusBox"></span>
-      <br><br>
-      <div class="divGrouping">
+      <br id="br5"><br>
+      <div id="emailFieldDiv" class="divGrouping">
         <label for="emailField">Email:</label>
         <input class="c" type="text" id="emailField" spellcheck="false" oninput="resize(this)">
       </div>
-      <br>
-      <div class="divGrouping">
+      <br id="br1">
+      <div id="emailField2Div" class="divGrouping">
         <label for="emailField2">Confirm:</label>
         <input class="c" type="text" id="emailField2" spellcheck="false" oninput="resize(this)">
       </div>
-      <br><br>
+      <br id="br2"><br id="br3">
       <button class="e" id="submitButton" onclick="submitEmail()">Submit Email</button>
-      <br>
+      <br id="br4">
       <button class="e" id="otpButton" onclick="configureOTP()">Configure Authenticator App</button>
       <div id="qrcode" style="width:256px;height:256px;border:5px solid white;margin:auto;background-color:white;margin-top:1em;display:none"></div>
       <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
@@ -144,13 +147,20 @@
       resize(emailField);
       resize(emailField2);
       if (!email_enabled){
-        setStatus("white", "NOTICE: MFA emails have been disabled. Please configure an authenticator app instead.");
+        instructText.innerText = "Please configure an authenticator app, and then return to the login page.\nGoogle Authenticator is recommended.";
         submitButton.disabled = true;
         emailField.disabled = true;
         emailField2.disabled = true;
-      }else{
-        setStatus("white", "");
+        submitButton.style.display = "none";
+        emailFieldDiv.style.display = "none";
+        emailField2Div.style.display = "none";
+        br1.style.display = "none";
+        br2.style.display = "none";
+        br3.style.display = "none";
+        br4.style.display = "none";
+        br5.style.display = "none";
       }
+      setStatus("white", "");
       if (email_enabled){
         emailField.addEventListener("keypress", function (e){
           if (e.key==="Enter"){
