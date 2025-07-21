@@ -1,5 +1,7 @@
 package aces.webctrl.mfa.core;
+import java.util.regex.Pattern;
 public class IPCookie {
+  public final static Pattern USERNAME_PATTERN = Pattern.compile("^.*?(?=_[^_]++$)");
   public final static long MAX_EXPIRY = 604800000L; // 1 week
   public volatile String user_ip;
   public volatile long expiry;

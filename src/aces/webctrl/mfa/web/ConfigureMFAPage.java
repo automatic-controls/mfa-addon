@@ -38,29 +38,6 @@ public class ConfigureMFAPage extends ServletBase {
         .replace("__TOKEN__", Utility.escapeJS(token))
         .replace("__EMAIL_ENABLED__", String.valueOf(Config.emailEnabled))
       );
-    }else if (action.equals("otp")){
-      final String otp = Utility.createOTP(user);
-      Config.setOTP(user,otp);
-      Config.saveData();
-      res.setContentType("text/plain");
-      res.getWriter().print(otp);
-      Initializer.log("Configured authenticator for "+user+".");
-    //}else if (action.equals("testOTP")){
-    //  final String otp = req.getParameter("otp");
-    //  final String code = req.getParameter("code");
-    //  if (otp==null || code==null){
-    //    res.setStatus(400);
-    //    return;
-    //  }
-    //  boolean b;
-    //  try{
-    //    b = Utility.checkCode(otp, code);
-    //  }catch (java.net.URISyntaxException e){
-    //    res.setStatus(400);
-    //    return;
-    //  }
-    //  res.setContentType("text/plain");
-    //  res.getWriter().print(b?"1":"0");
     }else if (action.equals("save") && Config.emailEnabled){
       email = req.getParameter("mfa_email");
       if (email==null){
@@ -69,6 +46,31 @@ public class ConfigureMFAPage extends ServletBase {
       }
       Config.setEmail(user,email);
       Config.saveData();
+    }else if (action.equals("getotp")){
+      final String otp = Utility.createOTP(user);
+      res.setContentType("text/plain");
+      res.getWriter().print(otp);
+    }else if (action.equals("saveotp")){
+      final String otp = req.getParameter("otp");
+      final String code = req.getParameter("code");
+      if (otp==null || code==null){
+        res.setStatus(400);
+        return;
+      }
+      boolean b;
+      try{
+        b = Utility.checkCode(otp, code);
+      }catch (java.net.URISyntaxException e){
+        res.setStatus(400);
+        return;
+      }
+      if (b){
+        Config.setOTP(user,otp);
+        Config.saveData();
+        Initializer.log("Configured authenticator for "+user+".");
+      }
+      res.setContentType("text/plain");
+      res.getWriter().print(b?"1":"0");
     }else{
       res.sendError(400, "Invalid action parameter.");
     }

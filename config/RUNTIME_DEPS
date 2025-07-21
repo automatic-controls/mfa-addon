@@ -6,3 +6,4 @@ file:commonbaseutils:bin\lib
 file:webaccess-api:modules\webaccess
 file:extensionsupport-api:modules\extensionsupport
 file:javax.mail:bin\lib
+file:datatable:modules\datatable

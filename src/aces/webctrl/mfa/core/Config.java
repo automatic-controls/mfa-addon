@@ -7,6 +7,8 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
+import java.util.function.Predicate;
+import java.util.regex.*;
 import java.nio.*;
 import java.nio.file.*;
 import java.nio.channels.*;
@@ -89,6 +91,47 @@ public class Config {
     Config.urlFile = urlFile;
     Config.cookieFile = cookieFile;
     loadData();
+  }
+  public static boolean deleteUnused(Set<String> users){
+    final Predicate<String> pred = new Predicate<>(){
+      @Override public boolean test(String o){
+        return !users.contains(o);
+      }
+    };
+    final HashSet<String> mfa = new HashSet<String>((int)Math.ceil(users.size()/0.75));
+    boolean changed = false;
+    whitelistLock.writeLock().lock();
+    try{
+      changed|=whitelist.removeIf(pred);
+    }finally{
+      whitelistLock.writeLock().unlock();
+    }
+    mapLock.writeLock().lock();
+    try{
+      changed|=usernameEmailMappings.keySet().removeIf(pred);
+      mfa.addAll(usernameEmailMappings.keySet());
+    }finally{
+      mapLock.writeLock().unlock();
+    }
+    otpLock.writeLock().lock();
+    try{
+      changed|=usernameOTPMappings.keySet().removeIf(pred);
+      mfa.addAll(usernameOTPMappings.keySet());
+    }finally{
+      otpLock.writeLock().unlock();
+    }
+    cookieLock.writeLock().lock();
+    try{
+      changed|=cookieMappings.keySet().removeIf(new Predicate<String>(){
+        @Override public boolean test(String s){
+          final Matcher m = IPCookie.USERNAME_PATTERN.matcher(s);
+          return !m.find() || !mfa.contains(m.group());
+        }
+      });
+    }finally{
+      cookieLock.writeLock().unlock();
+    }
+    return changed;
   }
   private static <T> T get(CompletableFuture<T> x, long timeout) throws InterruptedException, ExecutionException, CancellationException {
     try{
@@ -262,7 +305,7 @@ public class Config {
     if (cache && result){
       final long cur = System.currentTimeMillis();
       if (apiResponseCache.size()>32){
-        apiResponseCache.values().removeIf(new java.util.function.Predicate<Long>(){
+        apiResponseCache.values().removeIf(new Predicate<Long>(){
           @Override public boolean test(Long o){
             return o<=cur;
           }
@@ -298,7 +341,7 @@ public class Config {
     cookieLock.writeLock().lock();
     try{
       final long cur = System.currentTimeMillis();
-      cookieMappings.values().removeIf(new java.util.function.Predicate<IPCookie>(){
+      cookieMappings.values().removeIf(new Predicate<IPCookie>(){
         @Override public boolean test(IPCookie o){
           return o.expiry<=cur;
         }
@@ -326,7 +369,7 @@ public class Config {
       l = null;
     }
     if (submittedCodeCache.size()>32){
-      submittedCodeCache.values().removeIf(new java.util.function.Predicate<Long>(){
+      submittedCodeCache.values().removeIf(new Predicate<Long>(){
         @Override public boolean test(Long o){
           return o<=cur;
         }
@@ -359,7 +402,7 @@ public class Config {
   private static int getAttempts(String user){
     final long lim = System.currentTimeMillis()-90000L;
     final Container<Integer> count = new Container<>(0);
-    attempts.removeIf(new java.util.function.Predicate<Attempt>(){
+    attempts.removeIf(new Predicate<Attempt>(){
       @Override public boolean test(Attempt o) {
         if (o.time<lim){
           return true;
@@ -446,6 +489,39 @@ public class Config {
     }
     sb.append(']');
   }
+  public static void checkCookies(Set<String> users){
+    final HashSet<String> set = new HashSet<>(Math.max((int)(users.size()/0.75), 16));
+    mapLock.readLock().lock();
+    try{
+      set.addAll(usernameEmailMappings.keySet());
+    }finally{
+      mapLock.readLock().unlock();
+    }
+    set.removeAll(users);
+    if (set.isEmpty()){
+      return;
+    }
+    otpLock.readLock().lock();
+    try{
+      set.removeAll(usernameOTPMappings.keySet());
+    }finally{
+      otpLock.readLock().unlock();
+    }
+    if (set.isEmpty()){
+      return;
+    }
+    cookieLock.writeLock().lock();
+    try{
+      cookieMappings.keySet().removeIf(new Predicate<String>(){
+        @Override public boolean test(String s){
+          final Matcher m = IPCookie.USERNAME_PATTERN.matcher(s);
+          return !m.find() || set.contains(m.group());
+        }
+      });
+    }finally{
+      cookieLock.writeLock().unlock();
+    }
+  }
   public static void setEmails(Map<String,String> map){
     mapLock.writeLock().lock();
     try{
@@ -493,6 +569,19 @@ public class Config {
     }
   }
   public static String setOTP(String username, String otp){
+    if (otp==null && !containsEmailFor(username)){
+      cookieLock.writeLock().lock();
+      try{
+        cookieMappings.keySet().removeIf(new Predicate<String>(){
+          @Override public boolean test(String s){
+            final Matcher m = IPCookie.USERNAME_PATTERN.matcher(s);
+            return !m.find() || username.equalsIgnoreCase(m.group());
+          }
+        });
+      }finally{
+        cookieLock.writeLock().unlock();
+      }
+    }
     otpLock.writeLock().lock();
     try{
       if (otp==null){

@@ -31,6 +31,9 @@
         statusBox.innerText = text;
         statusBox.style.color = color;
       }
+      function validateInt(field){
+        field.value = field.value.replaceAll(/\D/g,"");
+      }
       function submitEmail(){
         const submitButton = document.getElementById("submitButton");
         if (!submitButton.disabled){
@@ -73,24 +76,26 @@
         if (!otpButton.disabled){
           otpButton.disabled = true;
           const req = new XMLHttpRequest();
-          req.open("POST","__PREFIX__/ConfigureMFA?action=otp");
+          req.open("POST","__PREFIX__/ConfigureMFA?action=getotp");
           req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
           req.timeout = 10000;
           req.onreadystatechange = function(){
             if (this.readyState===4){
               if (this.status===200){
-                const data = this.responseText;
+                totpSecret = this.responseText;
                 const qr = document.getElementById("qrcode");
                 qr.style.display = "block";
                 qr.replaceChildren();
                 new QRCode(qr, {
-                  text: data,
+                  text: totpSecret,
                   width: 256,
                   height: 256,
                   colorDark: "#000000",
                   colorLight: "#FFFFFF"
                 });
-                setStatus("lightgreen","Success! Please scan the QR code with your authenticator app before leaving this page.");
+                document.getElementById("otpDiv").style.display = "block";
+                document.getElementById("mfaCodeField").focus();
+                setStatus("lightgreen","Please scan the QR code with your authenticator app and enter a code to verify a successful setup.");
               }else{
                 if (this.status==0){
                   setStatus("red","Request timed out.");
@@ -108,18 +113,65 @@
           );
         }
       }
+      function saveOTP(){
+        const saveButton = document.getElementById("saveButton");
+        if (!saveButton.disabled && totpSecret.length>0){
+          const mfa_code = mfaCodeField.value;
+          if (!mfa_code){
+            setStatus("red","Please enter your security code.");
+            return;
+          }else if (mfa_code.length!==6){
+            setStatus("red","The security code is a 6-digit number.");
+            return;
+          }
+          saveButton.disabled = true;
+          const req = new XMLHttpRequest();
+          req.open("POST","__PREFIX__/ConfigureMFA?action=saveotp");
+          req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+          req.timeout = 10000;
+          req.onreadystatechange = function(){
+            if (this.readyState===4){
+              if (this.status===200){
+                mfaCodeField.value = "";
+                resize(mfaCodeField);
+                if (this.responseText==="1"){
+                  setStatus("lightgreen","Success! Your authenticator app is now configured.");
+                  document.getElementById("otpDiv").style.display = "none";
+                  window.location.href = window.location.origin;
+                }else{
+                  setStatus("red","Invalid security code.");
+                }
+              }else{
+                if (this.status==0){
+                  setStatus("red","Request timed out.");
+                }else{
+                  setStatus("red","HTTP Error "+this.status);
+                }
+              }
+              saveButton.disabled = false;
+            }
+          };
+          setStatus("white","Submitting...");
+          req.send(
+            "mfa_user="+encodeURIComponent(mfa_user)+
+            "&mfa_token="+encodeURIComponent(mfa_token)+
+            "&otp="+encodeURIComponent(totpSecret)+
+            "&code=" + encodeURIComponent(mfa_code)
+          );
+        }
+      }
     </script>
   </head>
   <body>
     <div style="text-align:center;">
       <h1 id="mainTitle">Configure MFA</h1>
-      <p id="instructText" style="max-width:50%;margin:0 auto">
-        Please enter an email where you can receive MFA security codes.
-        You may enter phone number emails as well.
-        For example, if your phone number is 555&#8209;123&#8209;4567, and your provider is AT&T, then 5551234567@txt.att.net is appropriate.
-        Verizon phone numbers use the extension @vtext.com instead.
-        You can optionally also configure an authenticator app, which will take precedence.
-        Google Authenticator is recommended.
+      <p style="max-width:50%;margin:0 auto">
+        <span id="instructText">
+          Please enter an email where you can receive MFA security codes.<br>
+          You may also configure an authenticator app, which will take precedence.<br>
+          Selections can be modified at a later date from WebCTRL's dropdown menu.<br>
+        </span>
+        <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank" class="regularLink">Google Authenticator</a> or <a href="https://2fas.com/auth/" target="_blank" class="regularLink">2FAS</a> is recommended.
       </p>
       <br>
       <span id="statusBox"></span>
@@ -138,16 +190,26 @@
       <br id="br4">
       <button class="e" id="otpButton" onclick="configureOTP()">Configure Authenticator App</button>
       <div id="qrcode" style="width:256px;height:256px;border:5px solid white;margin:auto;background-color:white;margin-top:1em;display:none"></div>
+      <div id="otpDiv" style="display:none">
+        <br>
+        <div class="divGrouping">
+          <label for="mfaCodeField">Security Code:</label>
+          <input class="c" type="text" name="mfaCode" id="mfaCodeField" spellcheck="false" oninput="validateInt(this);resize(this)">
+        </div>
+        <br>
+        <button class="e" id="saveButton" onclick="saveOTP()">Verify Code</button>
+      </div>
       <span id="hiddenSpan" style="min-width:2.5em;color:black;display:inline-block;position:absolute;left:-100000px;white-space:pre"></span>
     </div>
     <script>
+      var totpSecret = "";
       var mfa_user = "__USER__";
       var mfa_token = "__TOKEN__";
       const email_enabled = __EMAIL_ENABLED__;
       resize(emailField);
       resize(emailField2);
       if (!email_enabled){
-        instructText.innerText = "Please configure an authenticator app, and then return to the login page.\nGoogle Authenticator is recommended.";
+        instructText.innerText = "Please configure an authenticator app, and then return to the login page.\n";
         submitButton.disabled = true;
         emailField.disabled = true;
         emailField2.disabled = true;
@@ -176,6 +238,13 @@
         });
         emailField.focus();
       }
+      resize(mfaCodeField);
+      mfaCodeField.addEventListener("keypress", function (e){
+        if (e.key==="Enter"){
+          e.preventDefault();
+          saveOTP();
+        }
+      });
     </script>
   </body>
 </html>

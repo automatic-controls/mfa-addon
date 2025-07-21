@@ -54,6 +54,7 @@ public class Initializer implements ServletContextListener {
       HelperAPI.logoutAllForeign();
       HelperAPI.activateWebOperatorProvider(name);
     }
+    deleteGhosts();
   }
   /**
    * Releases resources.
@@ -64,6 +65,20 @@ public class Initializer implements ServletContextListener {
       HelperAPI.activateDefaultWebOperatorProvider();
     }
     Config.saveData();
+  }
+  public static void deleteGhosts(){
+    final Map<String,String> map = HelperAPI.getLocalOperators();
+    if (map!=null){
+      Set<String> set = map.keySet();
+      //HashSet<String> users = HashSet.newHashSet(set.size());
+      HashSet<String> users = new HashSet<>((int)Math.ceil(set.size()/0.75));
+      for (String s: set){
+        users.add(s.toLowerCase());
+      }
+      if (Config.deleteUnused(users)){
+        Config.saveData();
+      }
+    }
   }
   /**
    * Generate a new email token for the specified user.

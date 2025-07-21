@@ -4,11 +4,13 @@
   Contributors: Cameron Vogt (@cvogt729)
 */
 package aces.webctrl.mfa.core;
+import java.util.*;
 import com.controlj.green.addonsupport.web.auth.AuthenticationManager;
 import com.controlj.green.extensionsupport.Extension;
 import com.controlj.green.core.ui.UserSession;
 import com.controlj.green.core.data.*;
 import com.controlj.green.common.policy.*;
+import com.controlj.green.datatable.util.CoreHelper;
 /**
  * Namespace which contains methods to access small sections of a few internal WebCTRL APIs.
  */
@@ -17,6 +19,17 @@ public class HelperAPI {
    * Specifies whether methods of this API should log stack traces generated from errors.
    */
   private final static boolean logErrors = true;
+  /**
+   * @return a collection of all local WebCTRL operators where usernames are mapped to display names, or {@code null} if an error occurs.
+   */
+  public static Map<String,String> getLocalOperators(){
+    try{
+      return new CoreHelper().getOperatorList();
+    }catch(Throwable t){
+      Initializer.log(t);
+      return null;
+    }
+  }
   /**
    * @return Whether the specified user exists in the system, case insensitive, and that the password validates.
    * If {@code pass} is {@code null}, the password is not validated.

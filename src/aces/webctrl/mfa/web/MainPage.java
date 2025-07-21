@@ -2,18 +2,21 @@ package aces.webctrl.mfa.web;
 import aces.webctrl.mfa.core.*;
 import javax.servlet.http.*;
 import javax.servlet.annotation.MultipartConfig;
-
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.file.StandardOpenOption;
+import java.nio.*;
+import java.nio.file.*;
+import java.nio.channels.*;
 import java.util.*;
 @MultipartConfig
 public class MainPage extends ServletBase {
+  private volatile static long nextGhost = 0L;
   @Override public void exec(final HttpServletRequest req, final HttpServletResponse res) throws Throwable {
     final String action = req.getParameter("action");
     if (action==null){
+      final long t = System.currentTimeMillis();
+      if (t>nextGhost){
+        nextGhost = t+5000L;
+        Initializer.deleteGhosts();
+      }
       res.setContentType("text/html");
       res.getWriter().print(getHTML(req));
       return;
@@ -89,6 +92,7 @@ public class MainPage extends ServletBase {
         Config.trustProxyHeaders = _trustProxyHeaders;
         Config.cookiesEnabled = _cookiesEnabled;
         Config.setWhitelist(_whitelist);
+        Config.checkCookies(map.keySet());
         Config.setEmails(map);
         Config.saveData();
         break;
