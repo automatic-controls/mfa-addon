@@ -6,6 +6,9 @@ import javax.servlet.*;
 import java.nio.file.*;
 import java.util.*;
 import java.net.URISyntaxException;
+// # TODO
+// - Implement **Bypass MFA on Upstream Server Failure** option that is enabled by default
+//   - Maybe implement cache so that only api users are blocked when the api server is inaccessible
 /**
  * This class contains most of the life-cycle management logic for this add-on.
  */

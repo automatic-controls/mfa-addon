@@ -43,7 +43,8 @@ public class MainPage extends ServletBase {
         final String cookiesEnabled = req.getParameter("cookiesEnabled");
         final String mappings = req.getParameter("mappings");
         final String whitelist = req.getParameter("whitelist");
-        if (enforceMFA==null || allowServiceLogins==null || bypassOnEmailFailure==null || mappings==null || whitelist==null || emailEnabled==null || apiEnabled==null || trustProxyHeaders==null || cookiesEnabled==null){
+        final String issuer = req.getParameter("issuer");
+        if (enforceMFA==null || allowServiceLogins==null || bypassOnEmailFailure==null || mappings==null || whitelist==null || emailEnabled==null || apiEnabled==null || trustProxyHeaders==null || cookiesEnabled==null || issuer==null){
           res.setStatus(400);
           return;
         }
@@ -54,6 +55,7 @@ public class MainPage extends ServletBase {
         boolean _apiEnabled;
         boolean _trustProxyHeaders;
         boolean _cookiesEnabled;
+        String _issuer;
         ArrayList<String> _mappings;
         ArrayList<String> _whitelist;
         try{
@@ -66,6 +68,11 @@ public class MainPage extends ServletBase {
           _cookiesEnabled = Boolean.parseBoolean(cookiesEnabled);
           _mappings = Utility.decodeList(mappings);
           _whitelist = Utility.decodeList(whitelist);
+          _issuer = issuer.trim();
+          _issuer = _issuer.isEmpty()?"WebCTRL":_issuer;
+          if (_issuer.length()>40){
+            _issuer = _issuer.substring(0,40);
+          }
         }catch(Throwable t){
           Initializer.log(t);
           res.setStatus(400);
@@ -91,6 +98,7 @@ public class MainPage extends ServletBase {
         Config.apiEnabled = _apiEnabled;
         Config.trustProxyHeaders = _trustProxyHeaders;
         Config.cookiesEnabled = _cookiesEnabled;
+        Config.issuerName = _issuer;
         Config.setWhitelist(_whitelist);
         Config.checkCookies(map.keySet());
         Config.setEmails(map);
@@ -100,14 +108,15 @@ public class MainPage extends ServletBase {
       case "load":{
         final StringBuilder sb = new StringBuilder(1024);
         sb.append(Utility.format(
-          "{\"enforceMFA\":$0,\"allowServiceLogins\":$1,\"bypassOnEmailFailure\":$2,\"emailEnabled\":$3,\"apiEnabled\":$4,\"trustProxyHeaders\":$5,\"cookiesEnabled\":$6,",
+          "{\"enforceMFA\":$0,\"allowServiceLogins\":$1,\"bypassOnEmailFailure\":$2,\"emailEnabled\":$3,\"apiEnabled\":$4,\"trustProxyHeaders\":$5,\"cookiesEnabled\":$6,\"issuer\":\"$7\",",
           Config.enforceMFA,
           Config.allowServiceLogins,
           Config.bypassOnEmailFailure,
           Config.emailEnabled,
           Config.apiEnabled,
           Config.trustProxyHeaders,
-          Config.cookiesEnabled
+          Config.cookiesEnabled,
+          Utility.escapeJSON(Config.issuerName)
         ));
         sb.append("\"mappings\":");
         Config.printEmails(sb);

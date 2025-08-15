@@ -84,6 +84,10 @@ public class Config {
    */
   private volatile static long nextURLCheck = 0;
   /**
+   * Specifies the name of the issuer for the TOTP tokens.
+   */
+  public volatile static String issuerName = "WebCTRL";
+  /**
    * Sets the path to the saved data file and attempts to load any available data.
    */
   public static void init(Path mainFile, Path urlFile, Path cookieFile){
@@ -796,8 +800,11 @@ public class Config {
           whitelistLock.writeLock().unlock();
         }
         if (!s.end()){
-          Initializer.log("Data file corrupted.");
-          return false;
+          issuerName = s.readString();
+          if (!s.end()){
+            Initializer.log("Data file corrupted.");
+            return false;
+          }
         }
       }
       if (Files.exists(cookieFile)){
@@ -881,6 +888,7 @@ public class Config {
       }finally{
         whitelistLock.readLock().unlock();
       }
+      s.write(issuerName);
       ByteBuffer buf = s.getBuffer();
       synchronized(Config.class){
         try(

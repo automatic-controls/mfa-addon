@@ -27,6 +27,7 @@ Users can be added to a restriction bypass whitelist which makes them behave as 
 
 | Setting | Default | Description |
 | - | - | - |
+| ***Issuer*** | `WebCTRL` | This field will be displayed in your authenticator app after scanning QR codes. It is intended to uniquely identify this server. A length limit of 40 characters is enforced. |
 | ***Enforce MFA*** | `false` | When MFA is enforced, all non-whitelisted users will be forced to configure MFA when they login. |
 | ***Allow Service Logins*** | `true` | When unchecked, non-whitelisted users with MFA enabled will be unable to login to WebCTRL services such as SOAP and TELNET (these services are incompatible with MFA). |
 | ***Bypass MFA on Email Server Failure*** | `true` | When WebCTRL fails to connect to its email server, MFA security codes cannot be sent. This option permits MFA to be bypassed in such a case. Otherwise, non-whitelisted users with MFA enabled will not be able to login. |

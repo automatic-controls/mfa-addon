@@ -76,7 +76,7 @@ public class Utility {
       builder.withAlgorithm(HMACAlgorithm.SHA1);//deprecated, but Google Authenticator does not support any stronger algorithms
     })
     .withPeriod(java.time.Duration.ofSeconds(30))
-    .build().getURI("WebCTRL", user).toString();
+    .build().getURI(Config.issuerName, user).toString();
   }
   /**
    * @return a hex string representation of the given bytes.

@@ -74,6 +74,10 @@
           const cookiesEnabled = cookiesEnabledCheckbox.checked;
           const trustProxyHeaders = trustProxyHeadersCheckbox.checked;
           const apiEnabled = apiEnabledCheckbox.checked;
+          const _issuer = issuerField.value?.trim() || "WebCTRL";
+          const issuer = _issuer.length>40?_issuer.substring(0,40):_issuer;
+          issuerField.value = issuer;
+          resize(issuerField);
           const _mappings = [];
           for (const e of document.getElementById("mappingBody").getElementsByTagName("TR")){
             if (e.mfa_operator && e.mfa_email){
@@ -116,6 +120,7 @@
             "&cookiesEnabled="+encodeURIComponent(cookiesEnabled)+
             "&trustProxyHeaders="+encodeURIComponent(trustProxyHeaders)+
             "&apiEnabled="+encodeURIComponent(apiEnabled)+
+            "&issuer="+encodeURIComponent(issuer)+
             "&mappings="+encodeURIComponent(mappings)+
             "&whitelist="+encodeURIComponent(whitelist)
           );
@@ -268,6 +273,8 @@
         cookiesEnabledCheckbox.checked = data["cookiesEnabled"];
         trustProxyHeadersCheckbox.checked = data["trustProxyHeaders"];
         apiEnabledCheckbox.checked = data["apiEnabled"];
+        issuerField.value = data["issuer"];
+        resize(issuerField);
         const mappingBody = document.getElementById("mappingBody");
         while (mappingBody.children.length>1){
           mappingBody.removeChild(mappingBody.firstElementChild);
@@ -487,7 +494,11 @@
           </div>
         </div>
         <div class="column">
-          <div style="text-align:left">
+          <div style="text-align:left;margin-left:2em">
+            <div class="divGrouping" title="This field will be displayed in your authenticator app after scanning QR codes. It is intended to uniquely identify this server.">
+              <label for="issuerField">Issuer:</label>
+              <input class="c" type="text" id="issuerField" spellcheck="false" oninput="resize(this);registerChange()">
+            </div>
             <div class="divGrouping2" title="Specifies whether to force all users to use MFA.">
               <input type="checkbox" id="enforceMFACheckbox" oninput="registerChange()" style="width:1.3em;height:1.3em;vertical-align:middle">
               <label for="enforceMFACheckbox" style="vertical-align:middle">Enforce MFA</label>
@@ -555,6 +566,7 @@
       resize(usernameField);
       resize(usernameField2);
       resize(emailField);
+      resize(issuerField);
       usernameField.addEventListener("keypress", function (e){
         if (e.key==="Enter"){
           e.preventDefault();

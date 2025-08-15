@@ -1,7 +1,7 @@
 <extension version="1">
   <name>MFA</name>
   <description>Provides MFA for WebCTRL logins through an authenticator app or emailed security codes.</description>
-  <version>0.3.3</version>
+  <version>0.3.4</version>
   <vendor>Automatic Controls Equipment Systems, Inc.</vendor>
   <web-operator-provider>aces.webctrl.mfa.core.MFAProvider</web-operator-provider>
   <system-menu-provider>aces.webctrl.mfa.web.SystemMenuEditor</system-menu-provider>
