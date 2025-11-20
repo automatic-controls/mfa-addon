@@ -26,8 +26,7 @@ public class MFAProvider extends StandardWebOperatorProvider {
     }
     final char[] password = pass==null?new char[]{}:Utility.obfuscate(pass.toCharArray());
     if (!HelperAPI.validateUser(user, pass==null?null:new String(password))){
-      PolicyUtils.delayFailedAttempt();
-      throw new InvalidCredentialsException();
+      return super.login(req, res);
     }
     pass = null;
     user = user.toLowerCase();
