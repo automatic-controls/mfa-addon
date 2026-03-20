@@ -1,6 +1,6 @@
 /*
   BSD 3-Clause License
-  Copyright (c) 2022, Automatic Controls Equipment Systems, Inc.
+  Copyright (c) 2022, Automatic Controls Equipment Systems, LLC.
   Contributors: Cameron Vogt (@cvogt729)
 */
 package aces.webctrl.mfa.core;

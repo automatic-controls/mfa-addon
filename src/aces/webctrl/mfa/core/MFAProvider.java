@@ -7,6 +7,7 @@ import javax.servlet.*;
 import javax.servlet.http.*;
 import java.net.*;
 import java.util.regex.*;
+import java.lang.reflect.*;
 import java.nio.charset.StandardCharsets;
 public class MFAProvider extends StandardWebOperatorProvider {
   public static String encodeURL(String param){
@@ -47,16 +48,16 @@ public class MFAProvider extends StandardWebOperatorProvider {
           }
           return this.getBuiltinOperator(user);
         }else{
-          PolicyUtils.delayFailedAttempt();
+          delayFailedAttempt();
           res.sendRedirect(Initializer.getPrefix()+"error_page.jsp?m1="+encodeURL("An MFA error has occurred.")+"&m2="+encodeURL("The provided security code is incorrect or the login rate limit has been exceeded."));
           return null;
         }
       }catch(NumberFormatException e){
-        PolicyUtils.delayFailedAttempt();
+        delayFailedAttempt();
         res.sendRedirect(Initializer.getPrefix()+"error_page.jsp?m1="+encodeURL("An MFA error has occurred.")+"&m2="+encodeURL("Could not parse one-time security code."));
         return null;
       }catch(URISyntaxException e){
-        PolicyUtils.delayFailedAttempt();
+        delayFailedAttempt();
         res.sendRedirect(Initializer.getPrefix()+"error_page.jsp?m1="+encodeURL("An MFA error has occurred.")+"&m2="+encodeURL("Could not parse TOTP URI."));
         return null;
       }
@@ -103,7 +104,7 @@ public class MFAProvider extends StandardWebOperatorProvider {
   }
   @Override public WebOperator validate(final String username, char[] password, String host) throws ValidationException {
     final String user = username.toLowerCase();
-    if (host.startsWith("web browser at ") || Config.allowServiceLogins || !Config.enforceMFA && !(Config.emailEnabled && Config.containsEmailFor(user) || Config.containsOTPFor(user) || Config.isControlledByAPI(user,true)) || Config.isWhitelisted(user)){
+    if (host==null || host.startsWith("web browser at ") || Config.allowServiceLogins || !Config.enforceMFA && !(Config.emailEnabled && Config.containsEmailFor(user) || Config.containsOTPFor(user) || Config.isControlledByAPI(user,true)) || Config.isWhitelisted(user)){
       return super.validate(username, password, host);
     }else{
       throw new ValidationException("Service logins are disabled because MFA is not supported.");
@@ -119,6 +120,26 @@ public class MFAProvider extends StandardWebOperatorProvider {
       }
     }
     return null;
+  }
+  private static void delayFailedAttempt(){
+    try{
+      Method m;
+      try{
+        m = PolicyUtils.class.getDeclaredMethod("delayFailedAttempt", long.class);
+        m.invoke(null, 0L);
+      }catch(NoSuchMethodException e){
+        m = PolicyUtils.class.getDeclaredMethod("delayFailedAttempt");
+        m.invoke(null);
+      }
+    }catch(Throwable t){
+      Initializer.log("WARNING: Failed to use native login delay method.");
+      Initializer.log(t);
+      try{
+        Thread.sleep(3000L);
+      }catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
   private final static Pattern normalizer = Pattern.compile("[\\r\\n]++");
   private static String normalizeNewlines(String s){
